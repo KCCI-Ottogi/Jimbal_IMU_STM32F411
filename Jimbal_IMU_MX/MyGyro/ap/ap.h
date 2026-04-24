@@ -1,7 +1,14 @@
 #ifndef AP_H
 #define AP_H
 
-#include <stdint.h>
+
+#include "def.h"
+#include "hw_def.h"
+#include "bsp.h"
+#include "hw.h"
+
+#include "cli.h"
+#include "monitor.h"
 
 // RTOS Task 관리를 위한 구조체
 typedef struct {
