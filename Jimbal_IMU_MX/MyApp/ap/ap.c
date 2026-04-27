@@ -3,6 +3,8 @@
 // 서보 제어 명령어 함수
 void cliServo(uint8_t argc, char **argv) {
     // 입력 형식: servo test [채널0~1] [각도0~180]
+
+    
     if (argc == 4 && strcmp(argv[1], "test") == 0) {
         uint8_t ch    = (uint8_t)atoi(argv[2]);
         uint8_t angle = (uint8_t)atoi(argv[3]);
@@ -14,9 +16,14 @@ void cliServo(uint8_t argc, char **argv) {
 
         servoWrite(ch, angle);
         cliPrintf("Servo[%d] -> %d degrees\r\n", ch, angle);
-    } 
+    } else if(argc == 3 && strcmp(argv[1], "scan") == 0) {
+        uint8_t ch = (uint8_t)atoi(argv[2]);
+        servoScan(ch);
+    }
     else {
-        cliPrintf("Usage: servo test [0-1] [0-180]\r\n");
+        cliPrintf("Usage:\r\n");
+        cliPrintf("  servo test [0-1] [0-180]\r\n");
+        cliPrintf("  servo scan [0-1]\r\n");
     }
 }
 

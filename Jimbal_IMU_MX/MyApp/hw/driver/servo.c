@@ -24,3 +24,21 @@ void servoWrite(uint8_t ch, uint8_t angle) {
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pulse_value);
     }
 }
+
+
+void servoScan(uint8_t ch) {
+    cliPrintf("Starting Scan for Channel %d...\r\n", ch);
+    
+    // 0도에서 180도로 서서히 이동
+    for (int i = 0; i <= 180; i += 5) {
+        servoWrite(ch, i);
+        cliPrintf("CH %d - Current Angle: %d\r\n", ch, i);
+        HAL_Delay(100); // 각도 변화를 관찰할 수 있는 시간
+    }
+    
+    // 다시 90도(중앙)로 복귀
+    HAL_Delay(500);
+    servoWrite(ch, 90);
+    cliPrintf("Scan Complete. Returned to 90 degrees.\r\n");
+}
+
