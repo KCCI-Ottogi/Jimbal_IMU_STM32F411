@@ -6,7 +6,7 @@
 #include "bsp.h"
 #include "hw.h"
 #include "monitor.h"
-
+// #include "servo.h" // 추가
 
 void apInit(void);
 void apMain(void);

@@ -1,5 +1,26 @@
 #include "ap.h"
 
+// 서보 제어 명령어 함수
+void cliServo(uint8_t argc, char **argv) {
+    // 입력 형식: servo test [채널0~1] [각도0~180]
+    if (argc == 4 && strcmp(argv[1], "test") == 0) {
+        uint8_t ch    = (uint8_t)atoi(argv[2]);
+        uint8_t angle = (uint8_t)atoi(argv[3]);
+
+        if (ch > 1) {
+            cliPrintf("Channel must be 0 or 1\r\n");
+            return;
+        }
+
+        servoWrite(ch, angle);
+        cliPrintf("Servo[%d] -> %d degrees\r\n", ch, angle);
+    } 
+    else {
+        cliPrintf("Usage: servo test [0-1] [0-180]\r\n");
+    }
+}
+
+
 // button on/off  => enable/disable
 void cliButton(uint8_t argc, char **argv)
 {
@@ -325,7 +346,8 @@ void apInit(void)
     cliAdd("gpio", cliGpio);
     cliAdd("md", cliMd);
     cliAdd("button", cliButton);
-    cliAdd("temp", cliTemp);
+    cliAdd("temp", cliTemp);    
+    cliAdd("servo", cliServo);
 }
 void apMain()
 {

@@ -5,11 +5,15 @@
 
 void hwInit(void)
 {
-    ledInit();
+    ledInit();//보류
     uartInit();
     cliInit();
-    buttonInit();
-    tempInit();
+    buttonInit();//보류
+    tempInit();//보류
     // uartOpen(0, 9600);
+
+    // i2cInit();
+    // mpu6050Init();
+    servoInit(); 
 
 }
