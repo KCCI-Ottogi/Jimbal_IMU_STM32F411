@@ -42,3 +42,15 @@ void servoScan(uint8_t ch) {
     cliPrintf("Scan Complete. Returned to 90 degrees.\r\n");
 }
 
+void servoDualTest(void) {
+    cliPrintf("Dual Servo Sync Test Start...\r\n");
+    for (int i = 0; i <= 90; i += 5) {
+        servoWrite(0, 90 + i); // CH0은 90 -> 180
+        servoWrite(1, 90 - i); // CH1은 90 -> 0
+        HAL_Delay(50);
+    }
+    HAL_Delay(500);
+    servoWrite(0, 90);
+    servoWrite(1, 90);
+    cliPrintf("Dual Test Done.\r\n");
+}

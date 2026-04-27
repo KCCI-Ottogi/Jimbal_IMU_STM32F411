@@ -16,14 +16,27 @@ void cliServo(uint8_t argc, char **argv) {
 
         servoWrite(ch, angle);
         cliPrintf("Servo[%d] -> %d degrees\r\n", ch, angle);
-    } else if(argc == 3 && strcmp(argv[1], "scan") == 0) {
+    } else if(argc == 3 && strcmp(argv[1], "scan") == 0) {//모터별 가동범위
         uint8_t ch = (uint8_t)atoi(argv[2]);
         servoScan(ch);
+    } else if(strcmp(argv[1], "dual") == 0) {//두모터 동시 동작
+        cliPrintf("Dual Servo Sync Test (Pan/Tilt)...\r\n");
+        // 0번은 0->180, 1번은 180->0으로 동시 스캔 시뮬레이션
+        for(int i=0; i<=180; i+=20) {
+            servoWrite(0, i);
+            servoWrite(1, 180-i);
+            cliPrintf("P:%d, T:%d\r\n", i, 180-i);
+            HAL_Delay(300);
+        }
+        servoWrite(0, 90);
+        servoWrite(1, 90);
+        cliPrintf("Dual Test Done!\r\n");
     }
     else {
         cliPrintf("Usage:\r\n");
         cliPrintf("  servo test [0-1] [0-180]\r\n");
         cliPrintf("  servo scan [0-1]\r\n");
+        cliPrintf("  servo dual\r\n"); // 사용법 안내 추가
     }
 }
 
