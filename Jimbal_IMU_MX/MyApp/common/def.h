@@ -10,4 +10,5 @@
 
 #include <ctype.h>
 #include <sys/types.h>
+#include <math.h>
 #endif //__COMMON_DEF_H_

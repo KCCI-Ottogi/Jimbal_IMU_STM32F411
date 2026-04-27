@@ -21,7 +21,7 @@ static bool is_mag_ok = false;
 void cliImu(uint8_t argc, char **argv) {
   if (argc >= 2) {
     if (strcmp(argv[1], "on") == 0) {
-      imu_report_period = (argc == 3) ? atoi(argv[2]) : 500; // 기본값 500ms
+      imu_report_period = (argc == 3) ? atoi(argv[2]) : 1000; // 기본값 500ms
       Gyro_StartAuto(); // MPU6050 인터럽트 켜기
       Mag_StartAuto();  // HMC5883L 연속측정 켜기
       LOG_INF("IMU Report : ON (%d ms)", imu_report_period);
@@ -352,56 +352,55 @@ void monitorSystemTask(void *argument){
 
 }
 
+static Mag_Data_t current_magData;
 void gyroSystemTask(void *argument) {
-  Gyro_Data_t gyroData;
-  uint32_t last_tick = 0;
+  Gyro_Data_t gyroData = {0}; // 구조체 초기화
+  uint32_t last_print_tick = 0;
+  uint32_t last_calc_tick = osKernelGetTickCount();
 
   while (1) {
     if (is_gyro_ok && GyroReadySemHandle != NULL) {
-      // MPU6050 인터럽트 신호가 들어올 때까지 대기
       if (osSemaphoreAcquire(GyroReadySemHandle, osWaitForever) == osOK) {
         
-        // I2C를 읽어줘야 MPU6050의 INT핀이 LOW로 클리어됩니다.
         if (Gyro_Read(&gyroData)) {
           
-          // 설정된 주기(imu_report_period)를 만족했을 때만 콘솔/모니터에 출력 (요청하신 gyro x,y,z 출력)
-          if (imu_report_period > 0 && (osKernelGetTickCount() - last_tick >= imu_report_period)) {
-            last_tick = osKernelGetTickCount();
+          // 1. 시간 간격(dt) 계산
+          uint32_t now = osKernelGetTickCount();
+          float dt = (now - last_calc_tick) / 1000.0f; // 밀리초를 초(Second)로 변환
+          last_calc_tick = now;
 
-            int32_t gx = gyroData.gyro_x; int32_t gy = gyroData.gyro_y; int32_t gz = gyroData.gyro_z;
-            
-            if (isMonitoringOn()) {
-              monitorUpdateValue(ID_IMU_GYRO_X, TYPE_INT32, &gx);
-              monitorUpdateValue(ID_IMU_GYRO_Y, TYPE_INT32, &gy);
-              monitorUpdateValue(ID_IMU_GYRO_Z, TYPE_INT32, &gz);
+          // 2. 센서 융합 및 각도 계산 (가속도 + 자이로 + 지자기)
+          IMU_ComputeAngles(&gyroData, &current_magData, dt);
+
+          // 3. 주기적 출력 제어
+          if (imu_report_period > 0 && (now - last_print_tick >= imu_report_period)) {
+            last_print_tick = now;
+
+            if (!isMonitoringOn()) {
+              // CLI에 위치 각도 출력 (소수점 1자리까지만 출력하여 가독성 및 속도 확보)
+              cliPrintf("Angle [Roll: %6.1f | Pitch: %6.1f | Yaw: %6.1f]\r\n", 
+                        gyroData.roll, gyroData.pitch, gyroData.yaw);
             } else {
-              cliPrintf("GYRO X: %5d | Y: %5d | Z: %5d\r\n", gx, gy, gz);
+              // Monitor 패킷으로 보낼 때는 실수(float) 그대로 전송
+              monitorUpdateValue(ID_IMU_GYRO_X, TYPE_FLOAT, &gyroData.roll);
+              monitorUpdateValue(ID_IMU_GYRO_Y, TYPE_FLOAT, &gyroData.pitch);
+              monitorUpdateValue(ID_IMU_GYRO_Z, TYPE_FLOAT, &gyroData.yaw);
             }
           }
         }
       }
     } else {
-      osDelay(1000); // 초기화 실패 시 자원 낭비 방지
+      osDelay(1000); 
     }
   }
 }
-void magSystemTask(void *argument) {
-  Mag_Data_t magData;
 
+void magSystemTask(void *argument) {
   while (1) {
     if (is_mag_ok && imu_report_period > 0) {
-      if (Mag_Read(&magData)) {
-        int32_t mx = magData.mag_x; int32_t my = magData.mag_y; int32_t mz = magData.mag_z;
-
-        if (isMonitoringOn()) {
-          monitorUpdateValue(ID_IMU_MAG_X, TYPE_INT32, &mx);
-          monitorUpdateValue(ID_IMU_MAG_Y, TYPE_INT32, &my);
-          monitorUpdateValue(ID_IMU_MAG_Z, TYPE_INT32, &mz);
-        } else {
-          // cliPrintf("MAG  X: %5d | Y: %5d | Z: %5d\r\n", mx, my, mz);
-        }
-      }
-      osDelay(imu_report_period); // 지자계는 설정된 주기만큼 딜레이하며 폴링
+      // 읽은 지자기 데이터를 전역 구조체에 업데이트 (gyroSystemTask에서 가져다 쓰기 위함)
+      Mag_Read(&current_magData); 
+      osDelay(imu_report_period); 
     } else {
       osDelay(100);
     }
