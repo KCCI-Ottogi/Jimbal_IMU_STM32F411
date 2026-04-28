@@ -44,12 +44,19 @@ void servoScan(uint8_t ch) {
 
 void servoDualTest(void) {
     cliPrintf("Dual Servo Sync Test Start...\r\n");
-    for (int i = 0; i <= 90; i += 5) {
-        servoWrite(0, 90 + i); // CH0은 90 -> 180
-        servoWrite(1, 90 - i); // CH1은 90 -> 0
-        HAL_Delay(50);
+    
+    for(int i=0; i<=180; i++) { 
+        servoWrite(0, i);      // Pan: 0 -> 180
+        servoWrite(1, 180-i);  // Tilt: 180 -> 0
+        
+        // 너무 잦은 printf는 모터 동작을 방해하므로 20도마다만 출력
+        if (i % 20 == 0) {
+            cliPrintf("P:%d, T:%d\r\n", i, 180-i);
+        }
+
+        // 딜레이를 15~20ms 정도로 줄임 (이 수치가 작을수록 빨라짐)
+        HAL_Delay(15); 
     }
-    HAL_Delay(500);
     servoWrite(0, 90);
     servoWrite(1, 90);
     cliPrintf("Dual Test Done.\r\n");

@@ -2,44 +2,33 @@
 
 // 서보 제어 명령어 함수
 void cliServo(uint8_t argc, char **argv) {
-    // 입력 형식: servo test [채널0~1] [각도0~180]
+  // 입력 형식: servo test [채널0~1] [각도0~180]
 
-    
-    if (argc == 4 && strcmp(argv[1], "test") == 0) {
-        uint8_t ch    = (uint8_t)atoi(argv[2]);
-        uint8_t angle = (uint8_t)atoi(argv[3]);
+  if (argc == 4 && strcmp(argv[1], "test") == 0) {
+    uint8_t ch = (uint8_t)atoi(argv[2]);
+    uint8_t angle = (uint8_t)atoi(argv[3]);
 
-        if (ch > 1) {
-            cliPrintf("Channel must be 0 or 1\r\n");
-            return;
-        }
-
-        servoWrite(ch, angle);
-        cliPrintf("Servo[%d] -> %d degrees\r\n", ch, angle);
-    } else if(argc == 3 && strcmp(argv[1], "scan") == 0) {//모터별 가동범위
-        uint8_t ch = (uint8_t)atoi(argv[2]);
-        servoScan(ch);
-    } else if(strcmp(argv[1], "dual") == 0) {//두모터 동시 동작
-        cliPrintf("Dual Servo Sync Test (Pan/Tilt)...\r\n");
-        // 0번은 0->180, 1번은 180->0으로 동시 스캔 시뮬레이션
-        for(int i=0; i<=180; i+=20) {
-            servoWrite(0, i);
-            servoWrite(1, 180-i);
-            cliPrintf("P:%d, T:%d\r\n", i, 180-i);
-            HAL_Delay(300);
-        }
-        servoWrite(0, 90);
-        servoWrite(1, 90);
-        cliPrintf("Dual Test Done!\r\n");
+    if (ch > 1) {
+      cliPrintf("Channel must be 0 or 1\r\n");
+      return;
     }
-    else {
-        cliPrintf("Usage:\r\n");
-        cliPrintf("  servo test [0-1] [0-180]\r\n");
-        cliPrintf("  servo scan [0-1]\r\n");
-        cliPrintf("  servo dual\r\n"); // 사용법 안내 추가
-    }
+
+    servoWrite(ch, angle);
+    cliPrintf("Servo[%d] -> %d degrees\r\n", ch, angle);
+  } else if (argc == 3 && strcmp(argv[1], "scan") == 0) { // 모터별 가동범위
+    uint8_t ch = (uint8_t)atoi(argv[2]);
+    servoScan(ch);
+  } else if (strcmp(argv[1], "dual") == 0) { // 두모터 동시 동작
+
+    servoDualTest();
+
+  } else {
+    cliPrintf("Usage:\r\n");
+    cliPrintf("  servo test [0-1] [0-180]\r\n");
+    cliPrintf("  servo scan [0-1]\r\n");
+    cliPrintf("  servo dual\r\n"); // 사용법 안내 추가
+  }
 }
-
 
 // button on/off  => enable/disable
 void cliButton(uint8_t argc, char **argv)
