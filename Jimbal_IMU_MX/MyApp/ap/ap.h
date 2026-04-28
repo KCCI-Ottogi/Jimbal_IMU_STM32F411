@@ -8,6 +8,9 @@
 #include "monitor.h"
 #include "cli.h"
 
+#include "cmsis_os2.h"
+#include "cli.h"
+
 void apInit(void);
 void apMain(void);
 void apStopAutoTask(void);

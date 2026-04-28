@@ -1,8 +1,5 @@
 #include "ap.h"
-#include "gyro.h"
-#include "mag.h"
-#include "cmsis_os2.h"
-#include "cli.h"
+
 
 // FreeRTOS 세마포어 핸들
 extern osSemaphoreId_t GyroReadySemHandle;

@@ -1,11 +1,12 @@
 #ifndef GYRO_H
 #define GYRO_H
 
-#include "def.h"
+
 #include "stm32f4xx_hal.h"
 #include "cmsis_os2.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 #include "mag.h" // 지자기 데이터 구조체를 쓰기 위해 인클루드
 
 // IMU 데이터 및 계산된 각도 저장 구조체
