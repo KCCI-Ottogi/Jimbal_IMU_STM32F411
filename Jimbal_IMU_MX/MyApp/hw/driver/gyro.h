@@ -10,14 +10,14 @@
 
 // IMU 데이터 및 계산된 각도 저장 구조체
 typedef struct {
+    // raw 데이터
     int16_t accel_x, accel_y, accel_z;
     int16_t gyro_x, gyro_y, gyro_z;
-    
-    // 최종 출력 각도 (단위: Degree)
-    float roll;
-    float pitch;
-    float yaw;
+    // 계산된 각도 (Roll, Pitch, Yaw)
+    float roll, pitch, yaw; // 최종 출력 각도 (단위: Degree)
 } Gyro_Data_t;
+    
+   
 
 bool Gyro_Init(void);
 void Gyro_StartAuto(void);

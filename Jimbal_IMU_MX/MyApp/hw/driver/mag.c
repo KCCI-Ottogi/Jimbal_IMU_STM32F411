@@ -1,5 +1,8 @@
 #include "mag.h"
 #include "stm32f4xx_hal.h"
+#include <math.h>
+
+#define RAD_TO_DEG 57.29577951f
 
 extern I2C_HandleTypeDef hi2c1;
 #define HMC5883L_ADDR (0x1E << 1)
@@ -31,4 +34,12 @@ bool Mag_Read(Mag_Data_t *pData) {
     pData->mag_z = (int16_t)(raw[2] << 8 | raw[3]);
     pData->mag_y = (int16_t)(raw[4] << 8 | raw[5]);
     return true;
+}
+
+float Mag_GetYaw(Mag_Data_t *pMag) {
+    // 단순 Yaw 계산 (수평 상태 가정)
+    // 실제로는 Roll/Pitch를 이용한 Tilt Compensation이 필요하나 속도를 위해 기본형 제공
+    float yaw = atan2f((float)pMag->mag_y, (float)pMag->mag_x) * RAD_TO_DEG;
+    if(yaw < 0) yaw += 360.0f;
+    return yaw;
 }

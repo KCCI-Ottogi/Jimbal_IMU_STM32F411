@@ -10,10 +10,10 @@ extern osSemaphoreId_t GyroReadySemHandle;
 
 static volatile uint32_t led_toggle_period = 0;
 static volatile uint32_t imu_report_period = 0;
-static volatile bool imu_report_enabled = false;static bool is_gyro_ok = false;
+static volatile bool imu_report_enabled = false; 
+static bool is_gyro_ok = false;
 static bool is_mag_ok = false;
-// static uint32_t led_toggle_period = 0;
-// static uint32_t monitor_period = 0;
+
 
 // ==========================================
 // CLI Commands
@@ -480,5 +480,6 @@ void apMain(void)
   while (1)
   {
     cliMain();
+    osDelay(1);
   }
 }

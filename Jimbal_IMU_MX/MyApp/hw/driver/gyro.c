@@ -8,7 +8,9 @@ extern I2C_HandleTypeDef hi2c1;
 #define DEG_TO_RAD 0.017453293f
 #define GYRO_SCALE 131.0f  // MPU6050 FS_SEL=0 일 때의 Scale Factor
 #define ALPHA      0.96f   // 상호보완 필터 가중치 (자이로 96%, 가속도 4%)
-
+// 센서 감도 상수 (MPU6050 기본설정 기준)
+#define ACCEL_SENS      16384.0f     // +/- 2g 범위
+#define GYRO_SENS       131.0f       // +/- 250dps 범위
 
 
 bool Gyro_Init(void) {
@@ -65,30 +67,40 @@ void Gyro_StopAuto(void) {
     HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, 0x38, 1, &data, 1, 100);
 }
 
+
+
+static uint32_t last_time = 0;
+
 bool Gyro_Read(Gyro_Data_t *pData) {
     uint8_t raw[14];
-    
-    // I2C 읽기 시도 (여기서 실패하면 INT 핀이 HIGH로 고정되는 데드락 발생)
-    if (HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, 0x3B, 1, raw, 14, 10) != HAL_OK) {
-        
-        // [방어 코드] 읽기에 실패했으므로 MPU6050의 INT_STATUS 레지스터를 강제로 읽어 
-        // 억지로라도 INT 핀을 LOW로 떨어뜨려 다음 인터럽트를 유도합니다.
-        uint8_t dummy;
-        HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, 0x3A, 1, &dummy, 1, 10); 
-        
-        return false; // 이번 턴의 데이터는 버림
-    }
-    
+    if (HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, 0x3B, 1, raw, 14, 10) != HAL_OK) return false;
+
+    // 1. Raw 데이터 가공 (Little Endian 조합)
     pData->accel_x = (int16_t)(raw[0] << 8 | raw[1]);
     pData->accel_y = (int16_t)(raw[2] << 8 | raw[3]);
     pData->accel_z = (int16_t)(raw[4] << 8 | raw[5]);
     pData->gyro_x  = (int16_t)(raw[8] << 8 | raw[9]);
     pData->gyro_y  = (int16_t)(raw[10] << 8 | raw[11]);
     pData->gyro_z  = (int16_t)(raw[12] << 8 | raw[13]);
-    
+
+    // 2. 시간 변화량(dt) 계산
+    uint32_t now = HAL_GetTick();
+    float dt = (now - last_time) / 1000.0f;
+    last_time = now;
+
+    // 3. 가속도 기준 각도 계산 (atan2 사용으로 모든 범위 커버)
+    // 연산 최적화: 가속도 raw값을 중력 단위(g)로 변환하지 않고 직접 비율로 계산
+    float acc_roll  = atan2f((float)pData->accel_y, (float)pData->accel_z) * RAD_TO_DEG;
+    float acc_pitch = atan2f(-(float)pData->accel_x, sqrtf((float)pData->accel_y * pData->accel_y + (float)pData->accel_z * pData->accel_z)) * RAD_TO_DEG;
+
+    // 4. 상보 필터 (Complementary Filter)
+    // 자이로의 빠른 반응성 + 가속도의 절대 위치 결합
+    // 연산속도 1순위: 복잡한 칼만 필터 대신 실수 곱셈/덧셈으로만 구성
+    pData->roll  = ALPHA * (pData->roll  + (pData->gyro_x / GYRO_SENS) * dt) + (1.0f - ALPHA) * acc_roll;
+    pData->pitch = ALPHA * (pData->pitch + (pData->gyro_y / GYRO_SENS) * dt) + (1.0f - ALPHA) * acc_pitch;
+
     return true;
 }
-
 
 void IMU_ComputeAngles(Gyro_Data_t *imu, Mag_Data_t *mag, float dt) {
     // 1. 가속도 센서로 Roll, Pitch 절대 각도 계산
