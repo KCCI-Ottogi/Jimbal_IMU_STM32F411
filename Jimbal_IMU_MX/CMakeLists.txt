@@ -69,6 +69,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     
     MyApp
     MyApp/ap
+    MyApp/ap/service
     MyApp/bsp
     MyApp/common      # 여기에 hw_def.h가 있으니 필수!
     MyApp/hw

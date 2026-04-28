@@ -12,4 +12,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+//
+#include <math.h>
+
 #endif //__COMMON_DEF_H_
