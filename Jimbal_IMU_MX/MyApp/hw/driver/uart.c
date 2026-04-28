@@ -35,7 +35,7 @@ bool uartInit(void)
     if (uart_tx_mutex == NULL) {
         uart_tx_mutex = osMutexNew(NULL);
     }
-    bool ret = uartOpen(0, 9600);
+    bool ret = uartOpen(0, 1152000);//프로젝트 시 115200으로 설정
 
     HAL_UART_Receive_IT(&huart2, &rx_data, 1);
 
