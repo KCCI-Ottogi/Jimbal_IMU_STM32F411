@@ -54,18 +54,18 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-/* Definitions for myTask02 */
-osThreadId_t myTask02Handle;
-const osThreadAttr_t myTask02_attributes = {
-  .name = "myTask02",
+/* Definitions for myTaskLed */
+osThreadId_t myTaskLedHandle;
+const osThreadAttr_t myTaskLed_attributes = {
+  .name = "myTaskLed",
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for myTask03 */
-osThreadId_t myTask03Handle;
-const osThreadAttr_t myTask03_attributes = {
-  .name = "myTask03",
-  .stack_size = 256 * 4,
+/* Definitions for myTaskTemp */
+osThreadId_t myTaskTempHandle;
+const osThreadAttr_t myTaskTemp_attributes = {
+  .name = "myTaskTemp",
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for myTask04 */
@@ -81,6 +81,13 @@ const osThreadAttr_t myTask05_attributes = {
   .name = "myTask05",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for myTaskMonitor */
+osThreadId_t myTaskMonitorHandle;
+const osThreadAttr_t myTaskMonitor_attributes = {
+  .name = "myTaskMonitor",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for GyroReadySem */
 osSemaphoreId_t GyroReadySemHandle;
@@ -98,6 +105,7 @@ void ledSystemTask(void *argument);
 void tempSystemTask(void *argument);
 void gyroSystemTask(void *argument);
 void magSystemTask(void *argument);
+void monitorSystemTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -135,17 +143,20 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
-  /* creation of myTask02 */
-  myTask02Handle = osThreadNew(ledSystemTask, NULL, &myTask02_attributes);
+  /* creation of myTaskLed */
+  myTaskLedHandle = osThreadNew(ledSystemTask, NULL, &myTaskLed_attributes);
 
-  /* creation of myTask03 */
-  myTask03Handle = osThreadNew(tempSystemTask, NULL, &myTask03_attributes);
+  /* creation of myTaskTemp */
+  myTaskTempHandle = osThreadNew(tempSystemTask, NULL, &myTaskTemp_attributes);
 
   /* creation of myTask04 */
   myTask04Handle = osThreadNew(gyroSystemTask, NULL, &myTask04_attributes);
 
   /* creation of myTask05 */
   myTask05Handle = osThreadNew(magSystemTask, NULL, &myTask05_attributes);
+
+  /* creation of myTaskMonitor */
+  myTaskMonitorHandle = osThreadNew(monitorSystemTask, NULL, &myTaskMonitor_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -245,6 +256,24 @@ __weak void magSystemTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END magSystemTask */
+}
+
+/* USER CODE BEGIN Header_monitorSystemTask */
+/**
+* @brief Function implementing the myTaskMonitor thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_monitorSystemTask */
+__weak void monitorSystemTask(void *argument)
+{
+  /* USER CODE BEGIN monitorSystemTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END monitorSystemTask */
 }
 
 /* Private application code --------------------------------------------------*/
