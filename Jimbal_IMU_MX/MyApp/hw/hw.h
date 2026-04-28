@@ -8,9 +8,12 @@
 #include "button.h"
 #include "temp.h"
 #include "cli.h"
+
 #include "i2c.h"
 #include "gyro.h"
 #include "mag.h"
+
+#include "servo.h" // 추가
 
 void hwInit(void);
 

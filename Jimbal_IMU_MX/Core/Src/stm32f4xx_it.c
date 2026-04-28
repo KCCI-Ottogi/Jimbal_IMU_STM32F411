@@ -163,6 +163,7 @@ void DebugMon_Handler(void)
 /******************************************************************************/
 
 /**
+<<<<<<< HEAD
   * @brief This function handles EXTI line4 interrupt.
   */
 void EXTI4_IRQHandler(void)
@@ -177,6 +178,8 @@ void EXTI4_IRQHandler(void)
 }
 
 /**
+=======
+>>>>>>> origin/es_servo
   * @brief This function handles TIM1 update interrupt and TIM10 global interrupt.
   */
 void TIM1_UP_TIM10_IRQHandler(void)

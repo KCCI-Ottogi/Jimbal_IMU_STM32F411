@@ -1,18 +1,21 @@
-// #include "button.h"
-// #include "driver/log.h"
-// #include "driver/temp.h"
+//#include "driver/uart.h"
+
 // #include "hw_def.h"
 #include "hw.h"
-// #include "cli.h"
-// #include "uart.h"
-
-
 
 void hwInit(void)
 {
-    ledInit();
+    ledInit();//보류
     uartInit();
-    cliInit();  
+    cliInit();
+    // buttonInit();//보류
+    // tempInit();//보류
+    // uartOpen(0, 9600);
+
+    // i2cInit();
+    // mpu6050Init();
+    servoInit(); 
     
     logInit();
+
 }

@@ -95,10 +95,6 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_USART2_UART_Init();
-  MX_I2C1_Init();
-  MX_ADC1_Init();
-  MX_TIM2_Init();
-  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -169,26 +165,9 @@ void SystemClock_Config(void)
   }
 }
 
-/* USER CODE BEGIN 4 */
-extern osSemaphoreId_t GyroReadySemHandle;
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    if(GPIO_Pin == GPIO_PIN_4) // MPU6050 INT 핀 (PA0)
-    {
-        if(GyroReadySemHandle != NULL) {
-            osSemaphoreRelease(GyroReadySemHandle);
-        }
-    }
-}
-/* USER CODE END 4 */
-
 /**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM10 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
+  * @brief USART2 Initialization Function
+  * @param None
   * @retval None
   */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)

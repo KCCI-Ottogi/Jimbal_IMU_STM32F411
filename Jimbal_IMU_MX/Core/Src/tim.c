@@ -74,7 +74,10 @@ void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
+<<<<<<< HEAD
   sConfigOC.Pulse = 0;
+=======
+>>>>>>> origin/es_servo
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
