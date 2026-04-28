@@ -7,6 +7,7 @@
 #include "hw.h"
 #include "monitor.h"
 // #include "servo.h" // 추가
+#include "service/gimbal.h"
 
 void apInit(void);
 void apMain(void);

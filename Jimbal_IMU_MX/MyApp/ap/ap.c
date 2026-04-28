@@ -314,6 +314,24 @@ void monitorSystemTask(void *argument)
         osDelay(monitor_period);
     }
 }
+void StartGimbalSystemTask(void *argument)
+{
+    // 짐벌 초기 위치 설정 등 초기화가 필요하면 여기서 수행
+    serviceServoInit(); 
+    LOG_INF("Gimbal System Task Started!");
+
+    while (1) {
+        /* 1. ESP32-CAM 데이터 파싱 (UART 큐에서 패킷 조립) */
+        gimbalParseCamData();
+
+        /* 2. 짐벌 로직 업데이트 (목표 각도 계산 및 서보 출력) */
+        serviceServoUpdate();
+
+        /* 3. 제어 주기 조절 (짐벌은 정밀해야 하므로 10ms 정도 추천) */
+        // 10ms로 설정 시 100Hz 주기로 제어됩니다.
+        osDelay(10); 
+    }
+}
 
 void apStopAutoTask(void)
 {
@@ -346,6 +364,8 @@ void apInit(void)
     logInit();
     monitorInit();
 
+    serviceServoInit();
+
     monitorSetSyncHandler(apSyncPeriods);
     cliSetCtrlHandler(apStopAutoTask);
 
@@ -357,6 +377,7 @@ void apInit(void)
     cliAdd("button", cliButton);
     cliAdd("temp", cliTemp);    
     cliAdd("servo", cliServo);
+    // cliAdd("gimbal", cliGimbal);
 }
 void apMain()
 {
@@ -396,7 +417,10 @@ void apMain()
         // }
         // HAL_Delay(500);
 
+
         cliMain();
         // osDelay(1);
+        
+
     }
 }
