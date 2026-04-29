@@ -1,16 +1,24 @@
-#ifndef AP_AP_H_
-#define AP_AP_H_
+#ifndef __AP_AP_H_
+#define __AP_AP_H_  
 
 #include "def.h"
 #include "hw_def.h"
 #include "bsp.h"
 #include "hw.h"
 #include "monitor.h"
+#include "cli.h"
 // #include "servo.h" // 추가
 #include "service/gimbal.h"
 
 void apInit(void);
 void apMain(void);
 void apStopAutoTask(void);
+void apSyncPeriods(uint32_t period);
 
-#endif // AP_AP_H_
+// FreeRTOS Task 함수 선언
+void ledSystemTask(void *argument);
+void monitorSystemTask(void *argument);
+void gyroSystemTask(void *argument); // 추가됨
+void magSystemTask(void *argument);  // 추가됨
+
+#endif //__AP_AP_H_

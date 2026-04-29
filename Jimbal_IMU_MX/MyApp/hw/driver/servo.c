@@ -16,7 +16,7 @@ void servoWrite(uint8_t ch, uint8_t angle) {
     // 0도(0.5ms) = 500, 180도(2.5ms) = 2500
     uint32_t pulse_value = 500 + (angle * (2500 - 500) / 180);
 
-    cliPrintf("Servo CH: %d, Angle: %d\r\n", ch, angle); 
+    // cliPrintf("Servo CH: %d, Angle: %d\r\n", ch, angle); 
 
     if (ch == 0) {
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pulse_value);

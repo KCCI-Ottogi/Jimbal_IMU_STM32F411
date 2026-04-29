@@ -42,6 +42,11 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
+# 링커 옵션 설정 부분에 추가
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    -u _printf_float
+)
+
 # 1. 소스 파일 자동 검색 (일일이 등록하기 귀찮을 때 사용)
 # GLOB_RECURSE는 "MyApp 폴더 안을 샅샅이 뒤져서 .c로 끝나는 모든 파일을 찾아라"라는 뜻입니다.
 # SRC_FILES라는 변수에 그 파일들의 '전체 경로 목록'이 담기게 됩니다.

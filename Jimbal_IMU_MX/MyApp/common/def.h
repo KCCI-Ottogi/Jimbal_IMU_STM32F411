@@ -1,18 +1,14 @@
 #ifndef __COMMON_DEF_H_
 #define __COMMON_DEF_H_
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <ctype.h> // tolower()를 위해 추가
-#include <stdlib.h> // atoi()를 위해 추가
-#include <string.h>
-#include <sys/types.h>
-
-/////////내가추가
-#include <stdarg.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
 
-//
+#include <ctype.h>
+#include <sys/types.h>
 #include <math.h>
-
 #endif //__COMMON_DEF_H_

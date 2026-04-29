@@ -1,208 +1,201 @@
-
 #include "monitor.h"
+#include "log_def.h"
+#include <stdint.h>
 
-// #define LOG_TAG "MON"
 
-typedef enum { MONITOR_MODE_OFF = 0, MONITOR_MODE_BINARY, MONITOR_MODE_ASCII } monitor_mode_t;
+typedef enum
+{
+  MONITOR_MODE_OFF = 0,
+  MONITOR_MODE_BINARY,
+  MONITOR_MODE_ASCII
+} monitor_mode_t;
 
 static monitor_packet_t g_packet;
 static osMutexId_t monitor_mtx = NULL;
 static monitor_mode_t current_monitor_mode = MONITOR_MODE_OFF;
 
-static uint32_t monitor_period = 1000;        // 기본값 1초
-static monitor_sync_cb_t sync_handler = NULL; // 콜백 함수 포인터
+static uint32_t monitor_period = 1000;
+static monitor_sync_cb_t sync_handler=NULL;
 
 [[maybe_unused]] static uint8_t calcChecksum(uint8_t *data, uint32_t len)
 {
-    uint8_t sum = 0;
-    for (uint32_t i = 0; i < len; i++) {
-        sum ^= data[i];
-    }
-    return sum;
+  uint8_t sum = 0;
+  for (uint32_t i = 0; i < len; i++)
+  {
+    sum ^= data[i];
+  }
+  return sum;
 }
-uint32_t monitorGetPeriod(void)
-{
+uint32_t monitorGetPeriod(void){
     return monitor_period;
 }
 
+
 static void cliMonitor(uint8_t argc, char **argv)
 {
-    if (argc >= 2) {
+  if (argc >= 2)
+  {
 
-        if (strcmp(argv[1], "on") == 0) {
-            // monitor_mode_t next_mode = MONITOR_MODE_ASCII;
-
-            // uint32_t next_period = monitor_period;
-            // if (argc >= 3)
-            //     next_period = atoi(argv[2]);
-            // if (next_period < 10)
-            //     next_period = 10;
-
-            // current_monitor_mode = next_mode;
-            // monitor_period = next_period;
-            // if (sync_handler != NULL)
-            //     sync_handler(monitorGetPeriod());
-            // LOG_INF("All tasks synchronized to monitor period: %d ms", monitor_period);
-            // LOG_INF("Monitoring Mode: ON (ASCII)");
-            // return;
-
-            current_monitor_mode = MONITOR_MODE_ASCII;
-
-            // 1. 숫자가 있을 때만(argc >= 3) 주기를 갱신하고 동기화함
-            if (argc >= 3) {
-                uint32_t next_period = atoi(argv[2]);
-                if (next_period < 10) next_period = 10;
-                
-                monitor_period = next_period;
-                
-                // 주기를 명시했을 때만 다른 태스크(LED 등)와 동기화
-                if (sync_handler != NULL)
-                    sync_handler(monitor_period);
-                
-                LOG_INF("All tasks synchronized to: %d ms", monitor_period);
-            } 
-            // 2. 숫자 없이 'mon on'만 하면 기존 주기를 유지하며 켬
-            else {
-                LOG_INF("Monitoring Started with current period: %d ms", monitor_period);
-            }
-            
-            LOG_INF("Monitoring Mode: ON (ASCII)");
-            return;
+    
+    if (strcmp(argv[1], "on") == 0)
+    {
+        monitor_mode_t next_mode=MONITOR_MODE_ASCII;
+        uint32_t next_period=monitor_period;
+        if(argc>=3) next_period=atoi(argv[2]);
+        if(next_period<10) next_period=10;
 
 
-        } else if (strcmp(argv[1], "off") == 0) {
-            if (sync_handler != NULL)
-                sync_handler(0);
-            current_monitor_mode = MONITOR_MODE_OFF;
-            LOG_INF("Monitoring Mode: OFF (Text Mode Restored)");
-            return;
-        }
+      current_monitor_mode = next_mode;
+      monitor_period=next_period;
+        if (sync_handler!=NULL) sync_handler(monitorGetPeriod());
+        LOG_INF("All tasks synchronized to monitor period: %d ms", monitor_period);
+        LOG_INF("Monitoring Mode: ON (ASCII)");
+      return;
     }
+    else if (strcmp(argv[1], "off") == 0)
+    {
+        if (sync_handler!=NULL) sync_handler(0);
+      current_monitor_mode = MONITOR_MODE_OFF;
+      LOG_INF("Monitoring Mode: OFF (Text Mode Restored)");
+      return;
+    }
+  }
 
-    LOG_INF("Usage: monitor [on|off]");
+  LOG_INF("Usage: monitor [on|off]");
 
-    if (current_monitor_mode == MONITOR_MODE_ASCII)
-        LOG_INF("Current Mode: ON (ASCII)");
-    else
-        LOG_INF("Current Mode: OFF");
+  if (current_monitor_mode == MONITOR_MODE_ASCII)
+    LOG_INF("Current Mode: ON (ASCII)");
+  else
+    LOG_INF("Current Mode: OFF");
 }
 
-void monitorInit(void)
+void monitorInit()
 {
-    memset(&g_packet, 0, sizeof(g_packet));
+  memset(&g_packet, 0, sizeof(g_packet));
 
-    if (monitor_mtx == NULL)
-        monitor_mtx = osMutexNew(NULL);
+  if (monitor_mtx == NULL)
+    monitor_mtx = osMutexNew(NULL);
 
-    cliAdd("mon", cliMonitor);
+  cliAdd("mon", cliMonitor);
 }
 
 bool isMonitoringOn(void)
 {
-
-    return (current_monitor_mode != MONITOR_MODE_OFF);
+  return (current_monitor_mode != MONITOR_MODE_OFF);
 }
-
-void monitorOff(void)
-{
+void monitorOff(void){
     current_monitor_mode = MONITOR_MODE_OFF;
 }
 
 void monitorSetSyncHandler(monitor_sync_cb_t handler)
 {
-    sync_handler = handler;
+   sync_handler= handler;
 }
 
 void monitorUpdateValue(SensorID id, DataType type, void *p_val)
 {
-    if (monitor_mtx == NULL)
-        return;
-    osMutexAcquire(monitor_mtx, osWaitForever);
+  if (monitor_mtx == NULL)
+    return;
 
-    // sensor id check
-    int target_idx = -1;
-    for (int i = 0; i < g_packet.count; i++) {
-        if (g_packet.nodes[i].id == (uint8_t)id) {
-            target_idx = i;
-            break;
-        }
+  osMutexAcquire(monitor_mtx, osWaitForever);
+
+  // sensor id check
+  int target_idx = -1;
+  for (int i = 0; i < g_packet.count; i++)
+  {
+    if (g_packet.nodes[i].id == (uint8_t)id)
+    {
+      target_idx = i;
+      break;
     }
-    // new sensor
-    if (-1 == target_idx) {
-        if (g_packet.count < MAX_SENSOR_NODES) {
-            target_idx = g_packet.count;
-            g_packet.nodes[target_idx].id = (uint8_t)id;
-            g_packet.count++;
-        } else {
-            osMutexRelease(monitor_mtx);
-            return;
-        }
+  }
+
+  // new sensor
+  if (-1 == target_idx)
+  {
+    if (g_packet.count < MAX_SENSOR_NODES)
+    {
+      target_idx = g_packet.count;
+      g_packet.nodes[target_idx].id = (uint8_t)id;
+      g_packet.count++;
     }
-    // update
-    g_packet.nodes[target_idx].type = (uint8_t)type;
-
-    if (type == TYPE_UINT8 || type == TYPE_BOOL) {
-        g_packet.nodes[target_idx].value.u8_val[0] = *(uint8_t *)p_val;
-
-    } else {
-        memcpy(&g_packet.nodes[target_idx].value, p_val, 4);
+    else
+    {
+      osMutexRelease(monitor_mtx);
+      return;
     }
+  }
+  // update
+  g_packet.nodes[target_idx].type = (uint8_t)type;
 
-    osMutexRelease(monitor_mtx);
+  if (type == TYPE_UINT8 || type == TYPE_BOOL)
+  {
+    g_packet.nodes[target_idx].value.u8_val[0] = *(uint8_t *)p_val;
+  }
+  else
+  {
+    memcpy(&g_packet.nodes[target_idx].value, p_val, 4);
+  }
+
+  osMutexRelease(monitor_mtx);
 }
+
 void monitorSendPacket()
 {
-    if (current_monitor_mode == MONITOR_MODE_OFF || monitor_mtx == NULL)
-        return;
+  if (current_monitor_mode == MONITOR_MODE_OFF || monitor_mtx == NULL)
+    return;
 
-    osMutexAcquire(monitor_mtx, osWaitForever);
+  osMutexAcquire(monitor_mtx, osWaitForever);
 
-    // uint8_t tx_buf[256];
-    // uint32_t len = 0;
+  char tx_buf[256] = {0};
+  uint32_t len = 0;
 
-    // char tx_buf[512] = {0};
-    // int len = 0;
+  if (current_monitor_mode == MONITOR_MODE_ASCII)
+  {
 
-    char tx_buf[256] = {0};
-    uint32_t len = 0;
+    // 시작 문자 $
+    len += snprintf(tx_buf+len, sizeof(tx_buf)-len, "$%d",g_packet.count);
 
-    if (current_monitor_mode == MONITOR_MODE_ASCII) {
+    // 구분자 노드
+    for (int i = 0; i < g_packet.count; i++)
+    {
+      uint8_t id = g_packet.nodes[i].id;
+      uint8_t type = g_packet.nodes[i].type;
 
-        // 시작 문자 $
-        len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "$%d", g_packet.count);
 
-        // 구분자 노드
-        for (int i = 0; i < g_packet.count; i++) {
-            uint8_t id = g_packet.nodes[i].id;
-            uint8_t type = g_packet.nodes[i].type;
+        len += snprintf(tx_buf + len, sizeof(tx_buf) - len, ",");
 
-            len += snprintf(tx_buf + len, sizeof(tx_buf) - len, ",");
 
-            // id, type
-            len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "%d:%d:", id, type);
+      // id, type
+      len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "%d:%d:", id, type);
 
-            // value
-            if (type == TYPE_UINT8 || type == TYPE_BOOL) {
-                len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "%u",
-                                g_packet.nodes[i].value.u8_val[0]);
-            } else if (type == TYPE_INT32) {
-                len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "%ld",
-                                g_packet.nodes[i].value.i_val);
-            } else if (type == TYPE_FLOAT) {
-                len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "%.2f",
-                                g_packet.nodes[i].value.f_val);
-            } else {
-                len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "%lu",
-                                g_packet.nodes[i].value.u_val);
-            }
-        }
-
-        // 종료#
-        len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "#\r\n");
-    } else {
+      // vlaue
+      if (type == TYPE_UINT8 || type == TYPE_BOOL)
+      {
+        len+=snprintf(tx_buf+len, sizeof(tx_buf)-len, "%u",g_packet.nodes[i].value.u8_val[0]);
+      }
+      else if (type == TYPE_INT32)
+      {
+        len+=snprintf(tx_buf+len, sizeof(tx_buf)-len, "%ld",g_packet.nodes[i].value.i_val);
+      }
+      else if (type == TYPE_FLOAT)
+      {
+        len+=snprintf(tx_buf+len, sizeof(tx_buf)-len, "%.2f",g_packet.nodes[i].value.f_val);
+      }
+      else
+      {
+        len+=snprintf(tx_buf+len, sizeof(tx_buf)-len, "%lu",g_packet.nodes[i].value.u_val);
+      }
     }
 
-    uartWrite(0, (uint8_t *)tx_buf, len);
+    // 종료 #
+    len += snprintf(tx_buf + len, sizeof(tx_buf) - len, "#\r\n");
+  }
+  else
+  {
+  }
 
-    osMutexRelease(monitor_mtx);
+  uartWrite(0, (uint8_t*)tx_buf, len);
+
+  osMutexRelease(monitor_mtx);
 }

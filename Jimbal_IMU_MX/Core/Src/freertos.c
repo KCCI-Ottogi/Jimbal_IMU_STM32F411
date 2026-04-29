@@ -61,33 +61,26 @@ const osThreadAttr_t myTaskLed_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for myTaskTemp */
-osThreadId_t myTaskTempHandle;
-const osThreadAttr_t myTaskTemp_attributes = {
-  .name = "myTaskTemp",
+/* Definitions for myTaskGyro */
+osThreadId_t myTaskGyroHandle;
+const osThreadAttr_t myTaskGyro_attributes = {
+  .name = "myTaskGyro",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityLow,
-};
-/* Definitions for myTask04 */
-osThreadId_t myTask04Handle;
-const osThreadAttr_t myTask04_attributes = {
-  .name = "myTask04",
-  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
-};
-/* Definitions for myTask05 */
-osThreadId_t myTask05Handle;
-const osThreadAttr_t myTask05_attributes = {
-  .name = "myTask05",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for myTaskMonitor */
 osThreadId_t myTaskMonitorHandle;
 const osThreadAttr_t myTaskMonitor_attributes = {
   .name = "myTaskMonitor",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for myTaskMag */
+osThreadId_t myTaskMagHandle;
+const osThreadAttr_t myTaskMag_attributes = {
+  .name = "myTaskMag",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for myTaskGimbal */
 osThreadId_t myTaskGimbalHandle;
@@ -95,6 +88,13 @@ const osThreadAttr_t myTaskGimbal_attributes = {
   .name = "myTaskGimbal",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for myTaskTemp */
+osThreadId_t myTaskTempHandle;
+const osThreadAttr_t myTaskTemp_attributes = {
+  .name = "myTaskTemp",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for GyroReadySem */
 osSemaphoreId_t GyroReadySemHandle;
@@ -109,11 +109,11 @@ const osSemaphoreAttr_t GyroReadySem_attributes = {
 
 void StartDefaultTask(void *argument);
 void ledSystemTask(void *argument);
-void tempSystemTask(void *argument);
 void gyroSystemTask(void *argument);
-void magSystemTask(void *argument);
 void monitorSystemTask(void *argument);
+void magSystemTask(void *argument);
 void GimbalSystemTask(void *argument);
+void StartTask07(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -154,20 +154,20 @@ void MX_FREERTOS_Init(void) {
   /* creation of myTaskLed */
   myTaskLedHandle = osThreadNew(ledSystemTask, NULL, &myTaskLed_attributes);
 
-  /* creation of myTaskTemp */
-  myTaskTempHandle = osThreadNew(tempSystemTask, NULL, &myTaskTemp_attributes);
-
-  /* creation of myTask04 */
-  myTask04Handle = osThreadNew(gyroSystemTask, NULL, &myTask04_attributes);
-
-  /* creation of myTask05 */
-  myTask05Handle = osThreadNew(magSystemTask, NULL, &myTask05_attributes);
+  /* creation of myTaskGyro */
+  myTaskGyroHandle = osThreadNew(gyroSystemTask, NULL, &myTaskGyro_attributes);
 
   /* creation of myTaskMonitor */
   myTaskMonitorHandle = osThreadNew(monitorSystemTask, NULL, &myTaskMonitor_attributes);
 
+  /* creation of myTaskMag */
+  myTaskMagHandle = osThreadNew(magSystemTask, NULL, &myTaskMag_attributes);
+
   /* creation of myTaskGimbal */
   myTaskGimbalHandle = osThreadNew(GimbalSystemTask, NULL, &myTaskGimbal_attributes);
+
+  /* creation of myTaskTemp */
+  myTaskTempHandle = osThreadNew(StartTask07, NULL, &myTaskTemp_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -199,7 +199,7 @@ __weak void StartDefaultTask(void *argument)
 
 /* USER CODE BEGIN Header_ledSystemTask */
 /**
-* @brief Function implementing the myTask02 thread.
+* @brief Function implementing the myTaskLed thread.
 * @param argument: Not used
 * @retval None
 */
@@ -215,27 +215,9 @@ __weak void ledSystemTask(void *argument)
   /* USER CODE END ledSystemTask */
 }
 
-/* USER CODE BEGIN Header_tempSystemTask */
-/**
-* @brief Function implementing the myTask03 thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_tempSystemTask */
-__weak void tempSystemTask(void *argument)
-{
-  /* USER CODE BEGIN tempSystemTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END tempSystemTask */
-}
-
 /* USER CODE BEGIN Header_gyroSystemTask */
 /**
-* @brief Function implementing the myTask04 thread.
+* @brief Function implementing the myTaskGyro thread.
 * @param argument: Not used
 * @retval None
 */
@@ -249,24 +231,6 @@ __weak void gyroSystemTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END gyroSystemTask */
-}
-
-/* USER CODE BEGIN Header_magSystemTask */
-/**
-* @brief Function implementing the myTask05 thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_magSystemTask */
-__weak void magSystemTask(void *argument)
-{
-  /* USER CODE BEGIN magSystemTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END magSystemTask */
 }
 
 /* USER CODE BEGIN Header_monitorSystemTask */
@@ -287,6 +251,24 @@ __weak void monitorSystemTask(void *argument)
   /* USER CODE END monitorSystemTask */
 }
 
+/* USER CODE BEGIN Header_magSystemTask */
+/**
+* @brief Function implementing the myTaskMag thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_magSystemTask */
+__weak void magSystemTask(void *argument)
+{
+  /* USER CODE BEGIN magSystemTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END magSystemTask */
+}
+
 /* USER CODE BEGIN Header_GimbalSystemTask */
 /**
 * @brief Function implementing the myTaskGimbal thread.
@@ -303,6 +285,24 @@ __weak void GimbalSystemTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END GimbalSystemTask */
+}
+
+/* USER CODE BEGIN Header_StartTask07 */
+/**
+* @brief Function implementing the myTaskTemp thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTask07 */
+__weak void StartTask07(void *argument)
+{
+  /* USER CODE BEGIN StartTask07 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartTask07 */
 }
 
 /* Private application code --------------------------------------------------*/

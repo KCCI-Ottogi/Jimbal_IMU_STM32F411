@@ -1,11 +1,9 @@
 #ifndef __HW_DRIVER_UART_H__
 #define __HW_DRIVER_UART_H__
 
-// #include "def.h"
 #include "hw_def.h"
-// #include <stdint.h>
-// #include <stdarg.h> // Variable Arguments
-// #include <stdio.h>   // vsnprintf
+
+
 
 bool uartInit(void);
 bool uartOpen(uint8_t ch, uint32_t baudrate);
