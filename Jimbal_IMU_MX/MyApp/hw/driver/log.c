@@ -44,17 +44,9 @@ void logPrintf(const char *fmt, ...) {
     int len;
 
     va_start(args, fmt);
-<<<<<<< HEAD
     len = vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
 
     uartWrite(0, (uint8_t *)buf, len);
 }
 
-=======
-    len = vsnprintf(buf, 256, fmt, args);
-    va_end(args);
-
-    uartWrite(0, (uint8_t *)buf, len); 
-}
->>>>>>> origin/es_servo
