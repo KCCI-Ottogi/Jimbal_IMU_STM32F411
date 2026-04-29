@@ -170,17 +170,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-extern osSemaphoreId_t GyroReadySemHandle;
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    if(GPIO_Pin == GPIO_PIN_4) // MPU6050 INT 핀 (PA0)
-    {
-        if(GyroReadySemHandle != NULL) {
-            osSemaphoreRelease(GyroReadySemHandle);
-        }
-    }
-}
 /* USER CODE END 4 */
 
 /**

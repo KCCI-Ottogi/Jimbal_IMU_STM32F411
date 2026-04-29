@@ -15,6 +15,58 @@ static bool is_gyro_ok = false;
 static bool is_mag_ok = false;
 
 
+
+// 서보 제어 명령어 함수
+void cliServo(uint8_t argc, char **argv) {
+  // 입력 형식: servo test [채널0~1] [각도0~180]
+
+  if (argc == 4 && strcmp(argv[1], "test") == 0) {
+    uint8_t ch = (uint8_t)atoi(argv[2]);
+    uint8_t angle = (uint8_t)atoi(argv[3]);
+
+    if (ch > 1) {
+      cliPrintf("Channel must be 0 or 1\r\n");
+      return;
+    }
+
+    servoWrite(ch, angle);
+    cliPrintf("Servo[%d] -> %d degrees\r\n", ch, angle);
+  } else if (argc == 3 && strcmp(argv[1], "scan") == 0) { // 모터별 가동범위
+    uint8_t ch = (uint8_t)atoi(argv[2]);
+    servoScan(ch);
+  } else if (strcmp(argv[1], "dual") == 0) { // 두모터 동시 동작
+
+    servoDualTest();
+
+  } else {
+    cliPrintf("Usage:\r\n");
+    cliPrintf("  servo test [0-1] [0-180]\r\n");
+    cliPrintf("  servo scan [0-1]\r\n");
+    cliPrintf("  servo dual\r\n"); // 사용법 안내 추가
+  }
+}
+
+
+// button on/off  => enable/disable
+void cliButton(uint8_t argc, char **argv)
+{
+    if (argc == 2) {
+        if (strcmp(argv[1], "on") == 0) {
+            buttonEnable(true);
+            cliPrintf("Button Interrupt Report: ON\r\n");
+        } else if (strcmp(argv[1], "off") == 0) {
+            buttonEnable(false);
+            cliPrintf("Button Interrupt Report: OFF\r\n");
+        }
+    } else {
+        cliPrintf("Usage: button [on/off]\r\n");
+        cliPrintf("Current Status: %s\r\n", buttonGetEnable() ? "ON" : "OFF");
+    }
+}
+
+
+
+
 // ==========================================
 // CLI Commands
 // ==========================================
@@ -268,37 +320,54 @@ void cliSys(uint8_t argc, char **argv)
     cliPrintf("Usage: sys [reset]\r\n");
   }
 }
-// static uint32_t temp_read_period = 0;
-// void cliTemp(uint8_t argc, char **argv){
-//   if(argc==1)
-//   {
-//     if(temp_read_period >0){
-//       tempStopAuto();
-//     }
-//     temp_read_period=0;
-//     float t=tempReadSingle();
-//     cliPrintf("Current Temp: %.2f *C\r\n", t);
-//   }
-//   else if(argc==2){
+static uint32_t temp_read_period = 0;
+void cliTemp(uint8_t argc, char **argv){
+  if(argc==1)
+  {
+    if(temp_read_period >0){
+      tempStopAuto();
+    }
+    temp_read_period=0;
+    float t=tempReadSingle();
+    cliPrintf("Current Temp: %.2f *C\r\n", t);
+  }
+  else if(argc==2){
     
-//     int period =atoi(argv[1]);
-//     if(period>0){
-//       tempStartAuto();
-//       temp_read_period=period;
-//       cliPrintf("Temperature Auto-Read Started (%d ms)\r\n",period);
-//     }
-//     else{
-//       tempStopAuto();
-//       cliPrintf("Invalid Period\r\n");
-//     }
-//   }
-//   else{
-//     tempStopAuto();
-//     cliPrintf("Usage: temp\r\n");
-//     cliPrintf("       temp [period]\r\n");
-//   }
-// }
+    int period =atoi(argv[1]);
+    if(period>0){
+      tempStartAuto();
+      temp_read_period=period;
+      cliPrintf("Temperature Auto-Read Started (%d ms)\r\n",period);
+    }
+    else{
+      tempStopAuto();
+      cliPrintf("Invalid Period\r\n");
+    }
+  }
+  else{
+    tempStopAuto();
+    cliPrintf("Usage: temp\r\n");
+    cliPrintf("       temp [period]\r\n");
+  }
+}
 
+void tempSystemTask(void *argument)
+{
+    while (1) {
+        if (temp_read_period > 0) {
+            tempStartAuto();
+            float t = tempReadAuto();
+            if (isMonitoringOn()) {
+                monitorUpdateValue(ID_ENV_TEMP, TYPE_FLOAT, &t);
+            } else {
+                cliPrintf("Current Temp: %.2f *C\r\n", t);
+            }
+            osDelay(temp_read_period);
+        } else {
+            osDelay(50);
+        }
+    }
+}
 void StartDefaultTask(void *argument)
 {
   apInit();
@@ -407,6 +476,26 @@ void magSystemTask(void *argument) {
   }
 }
 
+
+void StartGimbalSystemTask(void *argument)
+{
+    // 짐벌 초기 위치 설정 등 초기화가 필요하면 여기서 수행
+    serviceServoInit(); 
+    LOG_INF("Gimbal System Task Started!");
+
+    while (1) {
+        /* 1. ESP32-CAM 데이터 파싱 (UART 큐에서 패킷 조립) */
+        gimbalParseCamData();
+
+        /* 2. 짐벌 로직 업데이트 (목표 각도 계산 및 서보 출력) */
+        serviceServoUpdate();
+
+        /* 3. 제어 주기 조절 (짐벌은 정밀해야 하므로 10ms 정도 추천) */
+        // 10ms로 설정 시 100Hz 주기로 제어됩니다.
+        osDelay(10); 
+    }
+}
+
 void apStopAutoTask(void){
   monitorOff();
   led_toggle_period = 0;
@@ -437,8 +526,13 @@ void apInit(void)
   LOG_INF("Application Init... Started");
   logInit();
   monitorInit();
+
+  
+  serviceServoInit();
+
   monitorSetSyncHandler(apSyncPeriods);
   cliSetCtrlCHandler(apStopAutoTask);
+  
 
   // ==========================================
   // [강력 추천] I2C Scanner 디버깅 코드
@@ -471,7 +565,13 @@ void apInit(void)
   cliAdd("sys", cliSys);
   cliAdd("gpio", cliGpio);
   cliAdd("md", cliMd);
+    cliAdd("button", cliButton);
+    cliAdd("temp", cliTemp);    
   cliAdd("imu", cliImu); // IMU 명령어 추가
+  cliAdd("servo", cliServo);
+  // cliAdd("gimbal", cliGimbal);
+
+
 }
 void apMain(void)
 {

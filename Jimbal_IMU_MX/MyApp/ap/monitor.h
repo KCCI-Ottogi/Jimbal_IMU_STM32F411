@@ -78,12 +78,10 @@ typedef struct __attribute__((packed)) {
 
 #define MAX_SENSOR_NODES 20 // 최대로 보관할 수 있는 센서 종류 수
 
-
 typedef struct {
     uint8_t count;
     sensor_node_t nodes[MAX_SENSOR_NODES];
 } monitor_packet_t;
-
 
 // ==========================================
 // API 함수
