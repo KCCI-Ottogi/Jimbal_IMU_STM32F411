@@ -4,9 +4,9 @@
 extern TIM_HandleTypeDef htim2; // CubeMX에서 설정한 타이머 핸들러
 
 void servoInit(void) {
-    // TIM2의 채널 1(PA0)과 채널 2(PA1) PWM 시작
-    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); // Yaw (PA0)
+    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2); // Pitch (PA1)
+    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3); // Roll (PB10) 추가
 }
 
 void servoWrite(uint8_t ch, uint8_t angle) {
@@ -22,6 +22,8 @@ void servoWrite(uint8_t ch, uint8_t angle) {
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pulse_value);
     } else if (ch == 1) {
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pulse_value);
+    } else if (ch == 2) { // Roll 축 추가 (TIM2_CH3)
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pulse_value);
     }
 }
 
@@ -60,4 +62,47 @@ void servoDualTest(void) {
     servoWrite(0, 90);
     servoWrite(1, 90);
     cliPrintf("Dual Test Done.\r\n");
+}
+
+void servoTotalTest(void) {
+    cliPrintf("======= [Gimbal 3-Axis Full Range Test] =======\r\n");
+    cliPrintf("Range: 0 -> 180 -> 0 degrees\r\n");
+    cliPrintf("Press 'Ctrl+C' to stop (if implemented)\r\n");
+
+    // 0도에서 180도까지 정방향 이동
+    for (int i = 0; i <= 180; i++) {
+        servoWrite(0, i);       // Yaw
+        servoWrite(1, i);       // Pitch
+        servoWrite(2, i);       // Roll
+        
+        // 30도마다 현재 각도 출력
+        if (i % 30 == 0) {
+            cliPrintf("Moving to: %d deg\r\n", i);
+        }
+        
+        // 속도 조절: 15ms * 180 step = 약 2.7초 소요
+        HAL_Delay(15); 
+    }
+
+    HAL_Delay(500); // 180도 지점에서 잠시 대기
+
+    // 180도에서 0도까지 역방향 복귀
+    for (int i = 180; i >= 0; i--) {
+        servoWrite(0, i);
+        servoWrite(1, i);
+        servoWrite(2, i);
+        
+        if (i % 30 == 0) {
+            cliPrintf("Returning to: %d deg\r\n", i);
+        }
+        
+        HAL_Delay(15);
+    }
+
+    // 최종적으로 안정적인 중앙 위치(90도)로 이동
+    cliPrintf("Test Complete. Moving to Home(90, 90, 90).\r\n");
+    HAL_Delay(500);
+    servoWrite(0, 90);
+    servoWrite(1, 90);
+    servoWrite(2, 90);
 }

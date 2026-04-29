@@ -16,34 +16,48 @@ static bool is_mag_ok = false;
 
 
 
-// 서보 제어 명령어 함수
 void cliServo(uint8_t argc, char **argv) {
-  // 입력 형식: servo test [채널0~1] [각도0~180]
+    // 입력 형식 확인
+    if (argc >= 2) {
+        // 1. 전체 테스트 (servo total)
+        if (strcmp(argv[1], "total") == 0) {
+            servoTotalTest();
+            return;
+        }
 
-  if (argc == 4 && strcmp(argv[1], "test") == 0) {
-    uint8_t ch = (uint8_t)atoi(argv[2]);
-    uint8_t angle = (uint8_t)atoi(argv[3]);
+        // 2. 개별 테스트 (servo test [ch] [angle])
+        if (strcmp(argv[1], "test") == 0 && argc == 4) {
+            uint8_t ch = (uint8_t)atoi(argv[2]);
+            uint8_t angle = (uint8_t)atoi(argv[3]);
 
-    if (ch > 1) {
-      cliPrintf("Channel must be 0 or 1\r\n");
-      return;
+            if (ch > 2) { // 0, 1, 2 채널 허용
+                cliPrintf("Error: Channel must be 0, 1, or 2\r\n");
+                return;
+            }
+            if (angle > 180) angle = 180;
+
+            servoWrite(ch, angle);
+            cliPrintf("Servo[%d] set to %d degrees\r\n", ch, angle);
+            return;
+        }
+
+        // 3. 개별 스캔 (servo scan [ch])
+        if (strcmp(argv[1], "scan") == 0 && argc == 3) {
+            uint8_t ch = (uint8_t)atoi(argv[2]);
+            if (ch > 2) {
+                cliPrintf("Error: Channel must be 0, 1, or 2\r\n");
+                return;
+            }
+            servoScan(ch);
+            return;
+        }
     }
 
-    servoWrite(ch, angle);
-    cliPrintf("Servo[%d] -> %d degrees\r\n", ch, angle);
-  } else if (argc == 3 && strcmp(argv[1], "scan") == 0) { // 모터별 가동범위
-    uint8_t ch = (uint8_t)atoi(argv[2]);
-    servoScan(ch);
-  } else if (strcmp(argv[1], "dual") == 0) { // 두모터 동시 동작
-
-    servoDualTest();
-
-  } else {
+    // 사용법 안내 (잘못된 입력 시)
     cliPrintf("Usage:\r\n");
-    cliPrintf("  servo test [0-1] [0-180]\r\n");
-    cliPrintf("  servo scan [0-1]\r\n");
-    cliPrintf("  servo dual\r\n"); // 사용법 안내 추가
-  }
+    cliPrintf("  servo total             - Test all 3 servos (0->180->0)\r\n");
+    cliPrintf("  servo test [0-2] [0-180] - Move specific servo to angle\r\n");
+    cliPrintf("  servo scan [0-2]         - Scan specific servo range\r\n");
 }
 
 
