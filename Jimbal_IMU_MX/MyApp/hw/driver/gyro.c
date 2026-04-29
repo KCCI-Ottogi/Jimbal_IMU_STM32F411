@@ -141,5 +141,7 @@ void IMU_ComputeAngles(Gyro_Data_t *imu, Mag_Data_t *mag, float dt) {
     float yaw_raw = atan2f(-mag_y_comp, mag_x_comp) * RAD_TO_DEG;
     
     // (선택) Yaw 값에도 약간의 자이로를 섞어주면 흔들림(노이즈)이 줄어듭니다.
-    imu->yaw = 0.90f * (imu->yaw + gyro_rate_yaw * dt) + 0.10f * yaw_raw;
+    // imu->yaw = 0.90f * (imu->yaw + gyro_rate_yaw * dt) + 0.10f * yaw_raw;
+    imu->yaw =  yaw_raw + 180.0f; // 
+
 }
