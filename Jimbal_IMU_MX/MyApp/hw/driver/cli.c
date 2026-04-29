@@ -4,7 +4,7 @@
 
 #include "def.h"
 
-#define CLI_LINE_BUF_MAX 32
+#define CLI_LINE_BUF_MAX 64
 #define CLI_CMD_LIST_MAX 32
 #define CLI_CMD_ARG_MAX 4
 

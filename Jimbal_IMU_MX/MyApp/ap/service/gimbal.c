@@ -1,10 +1,9 @@
 /* gimbal.c */
 
 #include "gimbal.h"
-#include "servo.h" // 하위 드라이버 호출
 #include <math.h>
 
-static service_servo_t servo_list[2];
+static service_servo_t servo_list[3];
 static camera_data_t cam_data; // 카메라 데이터 저장용
 
 // UART 인터럽트에서 이 함수를 호출하여 좌표를 넘겨줌
@@ -17,7 +16,7 @@ void gimbalSetCamData(int16_t x, int16_t y, bool detected) {
 
 
 bool serviceServoInit(void) {
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 3; i++) {
     servo_list[i].current_angle = 90.0f;
     servo_list[i].target_angle = 90.0f;
     servo_list[i].k = 0.1f; // 기본 부드러움 정도
@@ -42,6 +41,8 @@ void serviceServoSetTarget(uint8_t ch, float angle, float speed) {
 }
 
 
+
+
 void serviceServoUpdate(void) {
   // 1. 카메라가 객체를 잡았다면, 좌표를 목표 각도로 환산
   if (cam_data.is_detected) {
@@ -64,7 +65,7 @@ void serviceServoUpdate(void) {
   }
 
   // 2. 기존 보간 및 출력 로직
-  for (int i = 0; i < 2; i++) {// 20ms마다 호출되어 각도를 갱신하는 핵심 로직
+  for (int i = 0; i < 3; i++) {// 20ms마다 호출되어 각도를 갱신하는 핵심 로직
     float diff = servo_list[i].target_angle - servo_list[i].current_angle;
     if (fabs(diff) > 0.1f) {
       servo_list[i].current_angle += diff * servo_list[i].k;
@@ -75,6 +76,30 @@ void serviceServoUpdate(void) {
     }
   }
 }
+
+
+
+void gimbalUpdateFromIMU(float roll, float pitch, float yaw) {
+    // 1. 수평 유지를 위한 부호 전환 로직 (0도 기준)
+    // 기체가 +10도 기울면 서보는 90-10=80도로 움직여 수평 유지
+    float target_r = 90.0f - roll;
+    float target_p = 90.0f + pitch;
+    float target_y = 90.0f - (yaw - 180.0f); // Yaw축 보정 로직 (필요시 주석 해제)
+
+    // 2. 서보 모터 하드웨어 제한 (10도 ~ 170도)
+    if (target_r < 10.0f) target_r = 10.0f;
+    if (target_r > 170.0f) target_r = 170.0f;
+
+    if (target_p < 10.0f) target_p = 10.0f;
+    if (target_p > 170.0f) target_p = 170.0f;
+
+    // 3. 목표 각도 업데이트
+    servo_list[0].target_angle = target_r;
+    servo_list[1].target_angle = target_p;
+    servo_list[2].target_angle = target_y; // 3번째 축 주석 처리
+}
+
+
 
 // ESP32-CAM 전용 UART 파싱 함수
 void gimbalParseCamData(void) {

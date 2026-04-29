@@ -52,7 +52,7 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for myTaskLed */
 osThreadId_t myTaskLedHandle;
@@ -66,14 +66,14 @@ osThreadId_t myTaskGyroHandle;
 const osThreadAttr_t myTaskGyro_attributes = {
   .name = "myTaskGyro",
   .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityAboveNormal,
+  .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for myTaskMonitor */
 osThreadId_t myTaskMonitorHandle;
 const osThreadAttr_t myTaskMonitor_attributes = {
   .name = "myTaskMonitor",
   .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for myTaskMag */
 osThreadId_t myTaskMagHandle;
@@ -88,13 +88,6 @@ const osThreadAttr_t myTaskGimbal_attributes = {
   .name = "myTaskGimbal",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for myTaskTemp */
-osThreadId_t myTaskTempHandle;
-const osThreadAttr_t myTaskTemp_attributes = {
-  .name = "myTaskTemp",
-  .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for GyroReadySem */
 osSemaphoreId_t GyroReadySemHandle;
@@ -112,8 +105,7 @@ void ledSystemTask(void *argument);
 void gyroSystemTask(void *argument);
 void monitorSystemTask(void *argument);
 void magSystemTask(void *argument);
-void GimbalSystemTask(void *argument);
-void StartTask07(void *argument);
+void gimbalSystemTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -164,10 +156,7 @@ void MX_FREERTOS_Init(void) {
   myTaskMagHandle = osThreadNew(magSystemTask, NULL, &myTaskMag_attributes);
 
   /* creation of myTaskGimbal */
-  myTaskGimbalHandle = osThreadNew(GimbalSystemTask, NULL, &myTaskGimbal_attributes);
-
-  /* creation of myTaskTemp */
-  myTaskTempHandle = osThreadNew(StartTask07, NULL, &myTaskTemp_attributes);
+  myTaskGimbalHandle = osThreadNew(gimbalSystemTask, NULL, &myTaskGimbal_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -269,40 +258,22 @@ __weak void magSystemTask(void *argument)
   /* USER CODE END magSystemTask */
 }
 
-/* USER CODE BEGIN Header_GimbalSystemTask */
+/* USER CODE BEGIN Header_gimbalSystemTask */
 /**
 * @brief Function implementing the myTaskGimbal thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_GimbalSystemTask */
-__weak void GimbalSystemTask(void *argument)
+/* USER CODE END Header_gimbalSystemTask */
+__weak void gimbalSystemTask(void *argument)
 {
-  /* USER CODE BEGIN GimbalSystemTask */
+  /* USER CODE BEGIN gimbalSystemTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END GimbalSystemTask */
-}
-
-/* USER CODE BEGIN Header_StartTask07 */
-/**
-* @brief Function implementing the myTaskTemp thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartTask07 */
-__weak void StartTask07(void *argument)
-{
-  /* USER CODE BEGIN StartTask07 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartTask07 */
+  /* USER CODE END gimbalSystemTask */
 }
 
 /* Private application code --------------------------------------------------*/

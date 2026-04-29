@@ -491,7 +491,7 @@ void magSystemTask(void *argument) {
 }
 
 
-void StartGimbalSystemTask(void *argument)
+void gimbalSystemTask(void *argument)
 {
     // 짐벌 초기 위치 설정 등 초기화가 필요하면 여기서 수행
     serviceServoInit(); 
