@@ -72,7 +72,7 @@ const osThreadAttr_t myTaskGyro_attributes = {
 osThreadId_t myTaskMonitorHandle;
 const osThreadAttr_t myTaskMonitor_attributes = {
   .name = "myTaskMonitor",
-  .stack_size = 512 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for myTaskMag */
@@ -80,7 +80,7 @@ osThreadId_t myTaskMagHandle;
 const osThreadAttr_t myTaskMag_attributes = {
   .name = "myTaskMag",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal1,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for myTaskGimbal */
 osThreadId_t myTaskGimbalHandle;
@@ -88,6 +88,13 @@ const osThreadAttr_t myTaskGimbal_attributes = {
   .name = "myTaskGimbal",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for myTaskTemp */
+osThreadId_t myTaskTempHandle;
+const osThreadAttr_t myTaskTemp_attributes = {
+  .name = "myTaskTemp",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for GyroReadySem */
 osSemaphoreId_t GyroReadySemHandle;
@@ -106,6 +113,7 @@ void gyroSystemTask(void *argument);
 void monitorSystemTask(void *argument);
 void magSystemTask(void *argument);
 void GimbalSystemTask(void *argument);
+void StartTask07(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -157,6 +165,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of myTaskGimbal */
   myTaskGimbalHandle = osThreadNew(GimbalSystemTask, NULL, &myTaskGimbal_attributes);
+
+  /* creation of myTaskTemp */
+  myTaskTempHandle = osThreadNew(StartTask07, NULL, &myTaskTemp_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -274,6 +285,24 @@ __weak void GimbalSystemTask(void *argument)
     osDelay(1);
   }
   /* USER CODE END GimbalSystemTask */
+}
+
+/* USER CODE BEGIN Header_StartTask07 */
+/**
+* @brief Function implementing the myTaskTemp thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTask07 */
+__weak void StartTask07(void *argument)
+{
+  /* USER CODE BEGIN StartTask07 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartTask07 */
 }
 
 /* Private application code --------------------------------------------------*/

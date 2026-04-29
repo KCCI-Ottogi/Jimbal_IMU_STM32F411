@@ -170,7 +170,22 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+extern osSemaphoreId_t GyroReadySemHandle;
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    // [수정 전] if(GPIO_Pin == GPIO_PIN_0) 
+    // [수정 후] PA4 핀에서 발생한 인터럽트인지 확인합니다.
+    if(GPIO_Pin == GPIO_PIN_4) 
+    {
+        if(GyroReadySemHandle != NULL) {
+            osSemaphoreRelease(GyroReadySemHandle);
+        }
+    }
+    
+    // (만약 기존 파란색 버튼 PC13 코드가 있다면 아래에 그대로 유지하시면 됩니다.)
+    // else if (GPIO_Pin == GPIO_PIN_13) { ... }
+}
 /* USER CODE END 4 */
 
 /**
