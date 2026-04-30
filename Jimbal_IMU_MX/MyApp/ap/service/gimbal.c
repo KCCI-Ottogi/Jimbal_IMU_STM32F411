@@ -78,23 +78,36 @@
 // }
 
 
+
+
 void gimbalUpdate(void) {
     camera_data_t* p_cam = cameraGetLatestData();
 
-    // 1. 카메라 추적 제어 (Object Tracking)
-    if (p_cam->is_detected) {
-        // Pan(채널 0) 오차 계산 및 목표값 설정
+    // 1. 타겟이 인식되었을 때만 계산 진행
+    if (p_cam->is_detected && p_cam->area > 50) {
+        
+        // [Pan 계산] 중심 160 기준 오차 계산
         float error_x = (float)(160 - p_cam->x);
         float next_target_x = servoGetCurrentAngle(0) + (error_x * 0.07f);
-        servoSetTarget(0, next_target_x, 0.15f);
 
-        // Tilt(채널 1) 오차 계산 및 목표값 설정
+        // [Tilt 계산] 중심 120 기준 오차 계산
         float error_y = (float)(120 - p_cam->y);
         float next_target_y = servoGetCurrentAngle(1) + (error_y * 0.07f);
+
+        // 2. 서보 목표값 설정
+        servoSetTarget(0, next_target_x, 0.15f);
         servoSetTarget(1, next_target_y, 0.15f);
+
+        // 3. [최종 로그 확인] 이 로그가 터미널에 찍히면 통신+계산 모두 성공!
+        // CX/CY: 카메라입력, AREA: 물체크기, TRG_X/Y: 짐벌이 계산한 목표각도
+        cliPrintf("[GIMBAL] IN(X:%d, Y:%d, A:%d) -> OUT(TRG_X:%.1f, TRG_Y:%.1f)\r\n", 
+                  p_cam->x, p_cam->y, p_cam->area, next_target_x, next_target_y);
+
+    } else if (p_cam->is_detected && p_cam->area <= 50) {
+        // 면적이 너무 작으면 노이즈로 간주하고 무시 로그
+        cliPrintf("[GIMBAL] Noise Ignored (Area: %d)\r\n", p_cam->area);
     }
 }
-
 
 
 // // ESP32-CAM 전용 UART 파싱 함수
@@ -186,7 +199,9 @@ void gimbalTaskLoop(void) {
             // 여기서 실제로 모터로 신호가 나갑니다.
             // servoWrite(i, (uint8_t)roundf(servo_list[i].current_angle));
             // [수정]   servo_list[i].current_angle 대신 Getter 함수 사용
-            servoWrite(i, (uint8_t)roundf(current_angle));
+            // servoWrite(i, (uint8_t)roundf(current_angle));
+            // [수정2] 부드럽게 동작하도록
+            servoSmoothUpdate(); 
         }
     }
 }
