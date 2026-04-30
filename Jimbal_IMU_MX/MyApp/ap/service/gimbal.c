@@ -207,3 +207,4 @@ void gimbalReturnHome(void) {
     servoSetTarget(1, 90.0f, 0.1f); // Pitch
     servoSetTarget(2, 90.0f, 0.1f); // Roll
 }
+// ================ gimbal.c IMU Control 부분 END ==================
