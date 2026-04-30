@@ -35,7 +35,7 @@ void servoWrite(uint8_t ch, uint8_t angle) {
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pulse_value);
     } else if (ch == 1) {
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pulse_value);
-    } else if (ch == 2) { // Roll 축 추가 (TIM2_CH3)
+    } else if (ch == 2) { 
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pulse_value);
     }
 }
@@ -61,8 +61,8 @@ void servoDualTest(void) {
     cliPrintf("Dual Servo Sync Test Start...\r\n");
     
     for(int i=0; i<=180; i++) { 
-        servoWrite(0, i);      // Pan: 0 -> 180
-        servoWrite(1, 180-i);  // Tilt: 180 -> 0
+        servoWrite(2, i);  
+        servoWrite(1, 180-i); 
         
         // 너무 잦은 printf는 모터 동작을 방해하므로 20도마다만 출력
         if (i % 20 == 0) {
@@ -72,7 +72,7 @@ void servoDualTest(void) {
         // 딜레이를 15~20ms 정도로 줄임 (이 수치가 작을수록 빨라짐)
         HAL_Delay(15); 
     }
-    servoWrite(0, 90);
+    servoWrite(2, 90);
     servoWrite(1, 90);
     cliPrintf("Dual Test Done.\r\n");
 }
@@ -84,9 +84,9 @@ void servoTotalTest(void) {
 
     // 0도에서 180도까지 정방향 이동
     for (int i = 0; i <= 180; i++) {
-        servoWrite(0, i);       // Yaw
+        servoWrite(0, i);       // Roll
         servoWrite(1, i);       // Pitch
-        servoWrite(2, i);       // Roll
+        servoWrite(2, i);       // Yaw
         
         // 30도마다 현재 각도 출력
         if (i % 30 == 0) {
