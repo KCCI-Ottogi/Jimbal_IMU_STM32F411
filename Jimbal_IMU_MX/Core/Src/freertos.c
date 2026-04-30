@@ -65,29 +65,29 @@ const osThreadAttr_t myTaskLed_attributes = {
 osThreadId_t myTaskGyroHandle;
 const osThreadAttr_t myTaskGyro_attributes = {
   .name = "myTaskGyro",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal1,
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal3,
 };
 /* Definitions for myTaskMonitor */
 osThreadId_t myTaskMonitorHandle;
 const osThreadAttr_t myTaskMonitor_attributes = {
   .name = "myTaskMonitor",
-  .stack_size = 1024 * 4,
-  .priority = (osPriority_t) osPriorityNormal2,
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityNormal5,
 };
 /* Definitions for myTaskMag */
 osThreadId_t myTaskMagHandle;
 const osThreadAttr_t myTaskMag_attributes = {
   .name = "myTaskMag",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityNormal3,
 };
 /* Definitions for myTaskGimbal */
 osThreadId_t myTaskGimbalHandle;
 const osThreadAttr_t myTaskGimbal_attributes = {
   .name = "myTaskGimbal",
-  .stack_size = 512 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for GyroReadySem */
 osSemaphoreId_t GyroReadySemHandle;
