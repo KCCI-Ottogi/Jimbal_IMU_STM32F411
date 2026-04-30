@@ -34,5 +34,7 @@ void gimbalParseCamData(void);
 
 // IMU 데이터를 받아 짐벌 각도를 계산하는 함수
 void gimbalUpdateFromIMU(float roll, float pitch, float yaw);
-
+void gimbalTaskLoop(void);
+float gimbalGetCurrentAngle(uint8_t ch);
+void gimbalReturnHome(void);
 #endif

@@ -10,6 +10,8 @@ extern osSemaphoreId_t GyroReadySemHandle;
 
 static volatile uint32_t led_toggle_period = 0;
 static volatile uint32_t imu_report_period = 0;
+static volatile uint32_t gimbal_report_period = 0;
+
 static volatile bool imu_report_enabled = false; 
 static bool is_gyro_ok = false;
 static bool is_mag_ok = false;
@@ -365,6 +367,80 @@ void cliTemp(uint8_t argc, char **argv){
   }
 }
 
+
+// ==========================================
+// Gimbal CLI Command
+// ==========================================
+void cliGimbal(uint8_t argc, char **argv) {
+  if (argc >= 2) {
+    if (strcmp(argv[1], "on") == 0) {
+      uint32_t period = (argc == 3) ? atoi(argv[2]) : 500; // 기본 500ms
+      
+      // UART 병목 방지 (텍스트 모드 시 최소 100ms 제한)
+      if(!isMonitoringOn() && period < 100) {
+          period = 100;
+          cliPrintf("Warning: Period limited to 100ms to prevent UART bottleneck.\r\n");
+      }
+      
+      gimbal_report_period = period;
+      cliPrintf("Gimbal Report : ON (%d ms)\r\n", gimbal_report_period);
+    } 
+    else if (strcmp(argv[1], "off") == 0) {
+      gimbal_report_period = 0;
+      gimbalReturnHome();
+      cliPrintf("Gimbal Report : OFF & return Home\r\n");
+    }
+  } else {
+    cliPrintf("Usage: gim [on|off] [period]\r\n");
+  }
+}
+
+void gimbalSystemTask(void *argument)
+{
+    serviceServoInit(); 
+    LOG_INF("Gimbal System Task Started!");
+
+    uint32_t last_print_tick = 0; // 출력 시간 계산용
+
+    while (1) {
+        /* 1. ESP32-CAM 데이터 파싱 */
+        // gimbalParseCamData();
+
+        /* 2. 짐벌 로직 업데이트 (목표 각도 계산 및 서보 출력) */
+        // serviceServoUpdate();
+
+
+
+        // --------
+        // 1. 서보 모터를 목표 각도로 부드럽게 제어 (10ms 주기 업데이트)
+        // 위 gyroSystemTask에서 들어온 타겟을 향해 모터가 움직입니다.
+        gimbalTaskLoop();
+
+        /* 3. 짐벌 위치(각도) CLI 출력 로직 (멀티태스킹 최적화) */
+        if (gimbal_report_period > 0) {
+            uint32_t now = osKernelGetTickCount();
+            if (now - last_print_tick >= gimbal_report_period) {
+                last_print_tick = now;
+                
+                // getter 함수로 현재 서보 각도를 가져옴
+                float r_angle = gimbalGetCurrentAngle(0);
+                float p_angle = gimbalGetCurrentAngle(1);
+                float y_angle = gimbalGetCurrentAngle(2);
+
+                
+
+                if (!isMonitoringOn()) {
+                    cliPrintf("GIMBAL [Roll(0): %3d | Pitch(1): %3d | Yaw(2): %3d]\r\n", 
+                              (int)r_angle, (int)p_angle, (int)y_angle);
+                }
+            }
+        }
+
+        /* 4. 제어 주기 조절 (10ms) */
+        osDelay(10); 
+    }
+}
+
 void tempSystemTask(void *argument)
 {
     while (1) {
@@ -454,7 +530,8 @@ void gyroSystemTask(void *argument) {
 
           // 2. 센서 융합 및 각도 계산 (가속도 + 자이로 + 지자기)
           IMU_ComputeAngles(&gyroData, &current_magData, dt);
-
+          gimbalUpdateFromIMU(gyroData.roll, gyroData.pitch, gyroData.yaw);
+          
           // 3. 주기적 출력 제어
           if (imu_report_period > 0 && (now - last_print_tick >= imu_report_period)) {
             last_print_tick = now;
@@ -491,31 +568,16 @@ void magSystemTask(void *argument) {
 }
 
 
-void gimbalSystemTask(void *argument)
-{
-    // 짐벌 초기 위치 설정 등 초기화가 필요하면 여기서 수행
-    serviceServoInit(); 
-    LOG_INF("Gimbal System Task Started!");
 
-    while (1) {
-        /* 1. ESP32-CAM 데이터 파싱 (UART 큐에서 패킷 조립) */
-        gimbalParseCamData();
-
-        /* 2. 짐벌 로직 업데이트 (목표 각도 계산 및 서보 출력) */
-        serviceServoUpdate();
-
-        /* 3. 제어 주기 조절 (짐벌은 정밀해야 하므로 10ms 정도 추천) */
-        // 10ms로 설정 시 100Hz 주기로 제어됩니다.
-        osDelay(10); 
-    }
-}
 
 void apStopAutoTask(void){
   monitorOff();
   led_toggle_period = 0;
   imu_report_period = 0;
+  gimbal_report_period = 0;
   Gyro_StopAuto();
   Mag_StopAuto();
+  gimbalReturnHome();
   ledOff();
 }
 
@@ -583,7 +645,7 @@ void apInit(void)
     cliAdd("temp", cliTemp);    
   cliAdd("imu", cliImu); // IMU 명령어 추가
   cliAdd("servo", cliServo);
-  // cliAdd("gimbal", cliGimbal);
+  cliAdd("gim", cliGimbal);
 
 
 }

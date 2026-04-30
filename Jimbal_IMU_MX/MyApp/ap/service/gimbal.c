@@ -79,28 +79,6 @@ void serviceServoUpdate(void) {
 
 
 
-void gimbalUpdateFromIMU(float roll, float pitch, float yaw) {
-    // 1. 수평 유지를 위한 부호 전환 로직 (0도 기준)
-    // 기체가 +10도 기울면 서보는 90-10=80도로 움직여 수평 유지
-    float target_r = 90.0f - roll;
-    float target_p = 90.0f + pitch;
-    float target_y = 90.0f - (yaw - 180.0f); // Yaw축 보정 로직 (필요시 주석 해제)
-
-    // 2. 서보 모터 하드웨어 제한 (10도 ~ 170도)
-    if (target_r < 10.0f) target_r = 10.0f;
-    if (target_r > 170.0f) target_r = 170.0f;
-
-    if (target_p < 10.0f) target_p = 10.0f;
-    if (target_p > 170.0f) target_p = 170.0f;
-
-    // 3. 목표 각도 업데이트
-    servo_list[0].target_angle = target_r;
-    servo_list[1].target_angle = target_p;
-    servo_list[2].target_angle = target_y; // 3번째 축 주석 처리
-}
-
-
-
 // ESP32-CAM 전용 UART 파싱 함수
 void gimbalParseCamData(void) {
     uint8_t data;
@@ -144,3 +122,50 @@ void gimbalParseCamData(void) {
         }
     }
 }
+
+
+// ================ gimbal.c IMU Control 부분 START ==================
+void gimbalUpdateFromIMU(float roll, float pitch, float yaw) {
+    // 1. 수평 유지를 위한 부호 전환 로직 (0도 기준)
+    // 기체가 +10도 기울면 서보는 90-10=80도로 움직여 수평 유지
+    float target_r = 90.0f - roll;
+    float target_p = 90.0f + pitch;
+    float target_y = 0.0f - (yaw - 180.0f); // Yaw축 보정 로직 (필요시 주석 해제)
+
+    // 2. 서보 모터 하드웨어 제한 (10도 ~ 170도)
+    if (target_r < 10.0f) target_r = 10.0f;
+    if (target_r > 170.0f) target_r = 170.0f;
+
+    if (target_p < 10.0f) target_p = 10.0f;
+    if (target_p > 170.0f) target_p = 170.0f;
+
+    // 3. 목표 각도 업데이트
+    servo_list[0].target_angle = target_r;
+    servo_list[1].target_angle = target_p;
+    servo_list[2].target_angle = target_y; // 3번째 축 주석 처리
+    
+}
+
+// 태스크에서 10ms 마다 호출될 서보 부드러운 구동 루프
+void gimbalTaskLoop(void) {
+    for (int i = 0; i < 3; i++) {
+        float diff = servo_list[i].target_angle - servo_list[i].current_angle;
+        if (fabs(diff) > 0.2f) { // 0.2도 이상 차이날 때만 제어 (지터링 방지)
+            servo_list[i].current_angle += diff * servo_list[i].k;
+            // 여기서 실제로 모터로 신호가 나갑니다.
+            servoWrite(i, (uint8_t)roundf(servo_list[i].current_angle));
+        }
+    }
+}
+
+float gimbalGetCurrentAngle(uint8_t ch) {
+    if (ch >= 3) return 0.0f; // 예외 처리
+    return servo_list[ch].current_angle;
+}
+
+void gimbalReturnHome(void) {
+    servo_list[0].target_angle = 90.0f;
+    servo_list[1].target_angle = 90.0f;
+    servo_list[2].target_angle = 0.0f;
+}
+// ================ gimbal.c IMU Control 부분 END ==================
