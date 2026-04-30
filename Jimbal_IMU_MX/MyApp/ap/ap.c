@@ -56,10 +56,13 @@ void cliServo(uint8_t argc, char **argv) {
           uint8_t ch = (uint8_t)atoi(argv[2]);
           float angle = (float)atof(argv[3]);
           float k = (float)atof(argv[4]);
-    
+
+          // 값 설정만 하고 함수를 끝냅니다.
           servoSetTarget(ch, angle, k);
-          cliPrintf("Servo %d target set to %.1f with speed %.2f\r\n", ch, angle, k);
-        }
+          
+          cliPrintf("Servo %d: Target updated to %.1f\r\n", ch, angle);
+          return; // 여기서 return을 해야 CLI가 다음 입력을 받을 수 있습니다.
+      }
     }
 
     // 사용법 안내 (잘못된 입력 시)
@@ -512,7 +515,8 @@ void gimbalSystemTask(void *argument)
         gimbalParseCamData();
 
         /* 2. 짐벌 로직 업데이트 (목표 각도 계산 및 서보 출력) */
-        serviceServoUpdate();
+        servoSmoothUpdate(); // 보간제어로 이용
+        //serviceServoUpdate();
 
         /* 3. 제어 주기 조절 (짐벌은 정밀해야 하므로 10ms 정도 추천) */
         // 10ms로 설정 시 100Hz 주기로 제어됩니다.
