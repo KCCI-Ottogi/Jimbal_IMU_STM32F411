@@ -51,6 +51,15 @@ void cliServo(uint8_t argc, char **argv) {
             servoScan(ch);
             return;
         }
+
+        if (argc == 5 && strcmp(argv[1], "smooth") == 0) {
+          uint8_t ch = (uint8_t)atoi(argv[2]);
+          float angle = (float)atof(argv[3]);
+          float k = (float)atof(argv[4]);
+    
+          servoSetTarget(ch, angle, k);
+          cliPrintf("Servo %d target set to %.1f with speed %.2f\r\n", ch, angle, k);
+        }
     }
 
     // 사용법 안내 (잘못된 입력 시)
@@ -58,6 +67,7 @@ void cliServo(uint8_t argc, char **argv) {
     cliPrintf("  servo total             - Test all 3 servos (0->180->0)\r\n");
     cliPrintf("  servo test [0-2] [0-180] - Move specific servo to angle\r\n");
     cliPrintf("  servo scan [0-2]         - Scan specific servo range\r\n");
+    cliPrintf("  servo smooth [0-2] [0-180] [0.0-1.0] - Smoothly move servo to target angle with speed\r\n");
 }
 
 

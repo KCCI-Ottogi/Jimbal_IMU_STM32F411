@@ -3,10 +3,23 @@
 
 extern TIM_HandleTypeDef htim2; // CubeMX에서 설정한 타이머 핸들러
 
+
+// [추가] 3축 상태 저장소
+static servo_smooth_t servo_list[3];
+
 void servoInit(void) {
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); // Yaw (PA0)
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2); // Pitch (PA1)
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3); // Roll (PB10) 추가
+
+    // [추가] 구조체 초기화
+    for(int i=0; i<3; i++) {
+        servo_list[i].current_angle = 90.0f;
+        servo_list[i].target_angle = 90.0f;
+        servo_list[i].k = 0.1f; // 기본 부드러움
+        servoWrite(i, 90);
+    }
+
 }
 
 void servoWrite(uint8_t ch, uint8_t angle) {
@@ -105,4 +118,31 @@ void servoTotalTest(void) {
     servoWrite(0, 90);
     servoWrite(1, 90);
     servoWrite(2, 90);
+}
+
+
+// [추가] CLI 등에서 목표 각도를 설정하는 함수
+void servoSetTarget(uint8_t ch, float target, float k) {
+    if (ch > 2) return;
+    if (target < 0.0f) target = 0.0f;
+    if (target > 180.0f) target = 180.0f;
+
+    servo_list[ch].target_angle = target;
+    if (k > 0.0f) servo_list[ch].k = k;
+}
+
+
+// [추가] 실제 보간이 일어나는 핵심 함수 (Gimbal Task에서 호출)
+void servoSmoothUpdate(void) {
+    for (int i = 0; i < 3; i++) {
+        float diff = servo_list[i].target_angle - servo_list[i].current_angle;
+
+        // 데드존 설정 (0.05도 미만 차이는 무시하여 떨림 방지)
+        if (fabs(diff) > 0.05f) {
+            // 현재 각도를 목표 방향으로 k만큼 이동
+            servo_list[i].current_angle += diff * servo_list[i].k;
+            // 실제 PWM 출력 함수 호출
+            servoWrite(i, (uint8_t)roundf(servo_list[i].current_angle));
+        }
+    }
 }
