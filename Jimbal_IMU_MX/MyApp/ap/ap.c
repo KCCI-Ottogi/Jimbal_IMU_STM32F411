@@ -19,48 +19,77 @@ static bool is_mag_ok = false;
 
 
 void cliServo(uint8_t argc, char **argv) {
-    // 입력 형식 확인
+    // 1. 명령어 처리에 성공했는지 추적할 변수 (선택 사항, 여기선 조기 반환 사용)
+    
+    // 2. 인자가 아예 없는 경우 (servo만 입력)
     if (argc >= 2) {
-        // 1. 전체 테스트 (servo total)
+        
+        // --- [기존 명령어] ---
         if (strcmp(argv[1], "total") == 0) {
             servoTotalTest();
-            return;
+            return; // 성공 시 즉시 종료
         }
 
-        // 2. 개별 테스트 (servo test [ch] [angle])
         if (strcmp(argv[1], "test") == 0 && argc == 4) {
             uint8_t ch = (uint8_t)atoi(argv[2]);
             uint8_t angle = (uint8_t)atoi(argv[3]);
-
-            if (ch > 2) { // 0, 1, 2 채널 허용
-                cliPrintf("Error: Channel must be 0, 1, or 2\r\n");
-                return;
+            if (ch <= 2) {
+                servoWrite(ch, (angle > 180) ? 180 : angle);
+                cliPrintf("Servo[%d] set to %d deg\r\n", ch, angle);
+                return; // 성공 시 즉시 종료
             }
-            if (angle > 180) angle = 180;
+        }
 
-            servoWrite(ch, angle);
-            cliPrintf("Servo[%d] set to %d degrees\r\n", ch, angle);
+        if (strcmp(argv[1], "scan") == 0 && argc == 3) {
+            servoScan((uint8_t)atoi(argv[2]));
             return;
         }
 
-        // 3. 개별 스캔 (servo scan [ch])
-        if (strcmp(argv[1], "scan") == 0 && argc == 3) {
+        if (strcmp(argv[1], "smooth") == 0 && argc == 5) {
+            uint8_t ch = (uint8_t)atoi(argv[2]);
+            float angle = (float)atof(argv[3]);
+            float k = (float)atof(argv[4]);
+            servoSetTarget(ch, angle, k);
+            cliPrintf("Servo %d: Target %.1f, k %.2f\r\n", ch, angle, k);
+            return;
+        }
+
+        // --- [새로 추가한 명령어] ---
+        if (strcmp(argv[1], "sync") == 0 && argc == 6) {
+            float a0 = (float)atof(argv[2]);
+            float a1 = (float)atof(argv[3]);
+            float a2 = (float)atof(argv[4]);
+            float k  = (float)atof(argv[5]);
+            servoSetTargetAll(a0, a1, a2, k);
+            cliPrintf("Sync Target Set\r\n");
+            return;
+        }
+
+        if (strcmp(argv[1], "sweep") == 0 && argc == 4) {
             uint8_t ch = (uint8_t)atoi(argv[2]);
             if (ch > 2) {
-                cliPrintf("Error: Channel must be 0, 1, or 2\r\n");
-                return;
+                cliPrintf("Error: Invalid Channel %d\r\n", ch);
+                return; // 잘못된 채널이면 Usage를 보여주는 대신 에러 메시지 후 종료하는 게 명확할 때가 많습니다.
             }
-            servoScan(ch);
+            float k = (float)atof(argv[3]);
+            servoSweep(ch, k);
+            cliPrintf("CH %d Sweep\r\n", ch);
             return;
         }
     }
 
-    // 사용법 안내 (잘못된 입력 시)
+    // 3. 여기까지 내려왔다는 것은? 
+    // 인자가 부족했거나(argc < 2), 위 if문 조건(명령어 오타, 인자 개수 틀림)에 하나도 안 걸렸다는 뜻입니다.
+    cliPrintf("\r\n[Invalid Command or Arguments]\r\n");
     cliPrintf("Usage:\r\n");
-    cliPrintf("  servo total             - Test all 3 servos (0->180->0)\r\n");
-    cliPrintf("  servo test [0-2] [0-180] - Move specific servo to angle\r\n");
-    cliPrintf("  servo scan [0-2]         - Scan specific servo range\r\n");
+    cliPrintf("  servo total\r\n");
+    cliPrintf("  servo test [0-2] [0-180]\r\n");
+    cliPrintf("  servo scan [0-2]\r\n");
+    cliPrintf("  servo smooth [0-2] [0-180] [k]\r\n");
+    cliPrintf("  servo sync [ang0] [ang1] [ang2] [k]\r\n");
+    cliPrintf("  servo sweep [0-2] [k]\r\n");
 }
+
 
 
 // button on/off  => enable/disable
@@ -403,12 +432,18 @@ void gimbalSystemTask(void *argument)
     uint32_t last_print_tick = 0; // 출력 시간 계산용
 
     while (1) {
-        /* 1. ESP32-CAM 데이터 파싱 */
-        // gimbalParseCamData();
+        /* 1. 데이터 수집 */
+        cameraServiceUpdate(); 
 
-        /* 2. 짐벌 로직 업데이트 (목표 각도 계산 및 서보 출력) */
-        // serviceServoUpdate();
+        /* 2. 알고리즘 적용 (목표값 계산) */
+        // IMU 담당자분과 합칠 때 여기서 gimbalUpdateFromIMU()를 같이 호출하게 됩니다.
+        gimbalUpdate();        
 
+        /* 3. 하드웨어 출력 (보간 제어 및 PWM 발생) */
+        servoSmoothUpdate(); 
+
+        /* 4. 제어 주기 (100Hz) */
+        osDelay(10); 
 
 
         // --------
@@ -568,8 +603,6 @@ void magSystemTask(void *argument) {
 }
 
 
-
-
 void apStopAutoTask(void){
   monitorOff();
   led_toggle_period = 0;
@@ -604,7 +637,7 @@ void apInit(void)
   monitorInit();
 
   
-  serviceServoInit();
+  servoInit();
 
   monitorSetSyncHandler(apSyncPeriods);
   cliSetCtrlCHandler(apStopAutoTask);
