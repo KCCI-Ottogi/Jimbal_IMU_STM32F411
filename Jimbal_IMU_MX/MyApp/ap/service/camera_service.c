@@ -1,5 +1,6 @@
 #include "camera_service.h"
 #include "uart.h"
+#include "cli.h" 
 
 static camera_data_t cam_data;
 
