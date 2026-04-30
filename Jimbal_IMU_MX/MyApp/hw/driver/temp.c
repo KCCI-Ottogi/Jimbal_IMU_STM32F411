@@ -1,8 +1,4 @@
 #include "temp.h"
-#include "adc.h"
-#include "cmsis_os2.h"
-#include "stm32f4xx_hal_adc.h"
-#include <sys/types.h>
 
 static volatile u_int32_t adc_dma_buf[1];
 
