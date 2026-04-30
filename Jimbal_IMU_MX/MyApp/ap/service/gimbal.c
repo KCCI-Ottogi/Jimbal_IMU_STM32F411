@@ -96,11 +96,11 @@ void gimbalUpdate(void) {
         // 3. 각도 변환 및 업데이트
         // 감도(0.1f ~ 0.2f)를 곱해 현재 각도에서 조금씩 이동합니다.
         // TRG 값이 180을 넘지 않도록 하는 것이 핵심입니다.
-        float next_target_x = servoGetCurrentAngle(0) + (error_x * 0.15f); 
+        float next_target_x = servoGetCurrentAngle(2) + (error_x * 0.15f); 
         float next_target_y = servoGetCurrentAngle(1) + (error_y * 0.15f);
 
         // 4. 서보 목표값 설정
-        servoSetTarget(0, next_target_x, 0.15f);
+        servoSetTarget(2, next_target_x, 0.15f);
         servoSetTarget(1, next_target_y, 0.15f);
 
         // [디버그 로그] 이제 TRG 값이 90도 근처에서 안정적으로 움직일 겁니다.

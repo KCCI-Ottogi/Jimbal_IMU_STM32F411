@@ -8,9 +8,9 @@ extern TIM_HandleTypeDef htim2; // CubeMX에서 설정한 타이머 핸들러
 static servo_smooth_t servo_list[3];
 
 void servoInit(void) {
-    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); // Yaw (PA0)
+    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); // Roll (PB10) 추가
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2); // Pitch (PA1)
-    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3); // Roll (PB10) 추가
+    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3); // Yaw (PA0)
 
     // [추가] 구조체 초기화
     for(int i=0; i<3; i++) {
