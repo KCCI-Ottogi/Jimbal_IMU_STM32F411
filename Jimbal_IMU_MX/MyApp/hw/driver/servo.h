@@ -1,6 +1,6 @@
 /* servo.h */
-#ifndef SERVO_H_
-#define SERVO_H_
+#ifndef __SERVO_H__
+#define __SERVO_H__
 #include "hw_def.h"
 #include "cli.h" //추가함
 
@@ -23,6 +23,6 @@ void servoSetTarget(uint8_t ch, float target, float k);
 void servoSmoothUpdate(void);
 void servoSetTargetAll(float target0, float target1, float target2, float k);
 void servoSweep(uint8_t ch, float k);
-
+float servoGetCurrentAngle(uint8_t ch);
 
 #endif

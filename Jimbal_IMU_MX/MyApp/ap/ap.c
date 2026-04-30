@@ -522,20 +522,21 @@ void magSystemTask(void *argument) {
 
 void gimbalSystemTask(void *argument)
 {
-    // 짐벌 초기 위치 설정 등 초기화가 필요하면 여기서 수행
-    serviceServoInit(); 
     LOG_INF("Gimbal System Task Started!");
 
     while (1) {
-        /* 1. ESP32-CAM 데이터 파싱 (UART 큐에서 패킷 조립) */
-        gimbalParseCamData();
+        
+        /* 1. 데이터 수집 */
+        cameraServiceUpdate(); 
 
-        /* 2. 짐벌 로직 업데이트 (목표 각도 계산 및 서보 출력) */
-        servoSmoothUpdate(); // 보간제어로 이용
-        //serviceServoUpdate();
+        /* 2. 알고리즘 적용 (목표값 계산) */
+        // IMU 담당자분과 합칠 때 여기서 gimbalUpdateFromIMU()를 같이 호출하게 됩니다.
+        gimbalUpdate();        
 
-        /* 3. 제어 주기 조절 (짐벌은 정밀해야 하므로 10ms 정도 추천) */
-        // 10ms로 설정 시 100Hz 주기로 제어됩니다.
+        /* 3. 하드웨어 출력 (보간 제어 및 PWM 발생) */
+        servoSmoothUpdate(); 
+
+        /* 4. 제어 주기 (100Hz) */
         osDelay(10); 
     }
 }
@@ -572,7 +573,7 @@ void apInit(void)
   monitorInit();
 
   
-  serviceServoInit();
+  servoInit();
 
   monitorSetSyncHandler(apSyncPeriods);
   cliSetCtrlCHandler(apStopAutoTask);

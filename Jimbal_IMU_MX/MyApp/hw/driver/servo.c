@@ -163,3 +163,9 @@ void servoSweep(uint8_t ch, float k) {
     
     servoSetTarget(ch, target, k);
 }
+
+
+
+float servoGetCurrentAngle(uint8_t ch) {
+    return servo_list[ch].current_angle;
+}
