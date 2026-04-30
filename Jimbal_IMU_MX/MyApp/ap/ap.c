@@ -431,9 +431,38 @@ void gimbalSystemTask(void *argument)
     uint32_t last_print_tick = 0; // 출력 시간 계산용
 
     while (1) {
+
+
+        // --------
+        // 1. 서보 모터를 목표 각도로 부드럽게 제어 (10ms 주기 업데이트)
+        // 위 gyroSystemTask에서 들어온 타겟을 향해 모터가 움직입니다.
+        gimbalTaskLoop();
+
+        /* 3. 짐벌 위치(각도) CLI 출력 로직 (멀티태스킹 최적화) */
+        if (gimbal_report_period > 0) {
+            uint32_t now = osKernelGetTickCount();
+            if (now - last_print_tick >= gimbal_report_period) {
+                last_print_tick = now;
+                
+                // getter 함수로 현재 서보 각도를 가져옴
+                float r_angle = gimbalGetCurrentAngle(0);
+                float p_angle = gimbalGetCurrentAngle(1);
+                float y_angle = gimbalGetCurrentAngle(2);
+
+                
+
+                if (!isMonitoringOn()) {
+                    cliPrintf("GIMBAL [Roll(0): %3d | Pitch(1): %3d | Yaw(2): %3d]\r\n", 
+                              (int)r_angle, (int)p_angle, (int)y_angle);
+                }
+            }
+        }
+
+        ///////////////////////////////////////////////////
+
         /* 1. 데이터 수집 */
         cameraServiceUpdate(); 
-
+        
         /* 2. 알고리즘 적용 (목표값 계산) */
         // IMU 담당자분과 합칠 때 여기서 gimbalUpdateFromIMU()를 같이 호출하게 됩니다.
         gimbalUpdate();        
@@ -441,37 +470,8 @@ void gimbalSystemTask(void *argument)
         /* 3. 하드웨어 출력 (보간 제어 및 PWM 발생) */
         servoSmoothUpdate(); 
 
-        /* 4. 제어 주기 (100Hz) */
+        /* 4. 제어 주기 조절 (10ms) */
         osDelay(10); 
-
-
-        // --------
-        // 1. 서보 모터를 목표 각도로 부드럽게 제어 (10ms 주기 업데이트)
-        // 위 gyroSystemTask에서 들어온 타겟을 향해 모터가 움직입니다.
-        // gimbalTaskLoop();
-
-        // /* 3. 짐벌 위치(각도) CLI 출력 로직 (멀티태스킹 최적화) */
-        // if (gimbal_report_period > 0) {
-        //     uint32_t now = osKernelGetTickCount();
-        //     if (now - last_print_tick >= gimbal_report_period) {
-        //         last_print_tick = now;
-                
-        //         // getter 함수로 현재 서보 각도를 가져옴
-        //         float r_angle = gimbalGetCurrentAngle(0);
-        //         float p_angle = gimbalGetCurrentAngle(1);
-        //         float y_angle = gimbalGetCurrentAngle(2);
-
-                
-
-        //         if (!isMonitoringOn()) {
-        //             cliPrintf("GIMBAL [Roll(0): %3d | Pitch(1): %3d | Yaw(2): %3d]\r\n", 
-        //                       (int)r_angle, (int)p_angle, (int)y_angle);
-        //         }
-        //     }
-        // }
-
-        // /* 4. 제어 주기 조절 (10ms) */
-        // osDelay(10); 
     }
 }
 
