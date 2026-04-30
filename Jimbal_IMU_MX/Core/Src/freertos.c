@@ -65,7 +65,7 @@ const osThreadAttr_t myTaskLed_attributes = {
 osThreadId_t myTaskGyroHandle;
 const osThreadAttr_t myTaskGyro_attributes = {
   .name = "myTaskGyro",
-  .stack_size = 256 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal3,
 };
 /* Definitions for myTaskMonitor */
@@ -86,7 +86,7 @@ const osThreadAttr_t myTaskMag_attributes = {
 osThreadId_t myTaskGimbalHandle;
 const osThreadAttr_t myTaskGimbal_attributes = {
   .name = "myTaskGimbal",
-  .stack_size = 256 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
 /* Definitions for GyroReadySem */
