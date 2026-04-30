@@ -97,49 +97,49 @@ void gimbalUpdate(void) {
 
 
 
-// ESP32-CAM 전용 UART 파싱 함수
-void gimbalParseCamData(void) {
-    uint8_t data;
-    static uint8_t buf[8]; // ESP32에서 보내는 패킷은 8바이트
-    static uint8_t idx = 0;
+// // ESP32-CAM 전용 UART 파싱 함수
+// void gimbalParseCamData(void) {
+//     uint8_t data;
+//     static uint8_t buf[8]; // ESP32에서 보내는 패킷은 8바이트
+//     static uint8_t idx = 0;
 
-    // 채널 1(ESP32-CAM 연결부)에서 데이터 읽기
-    while(uartAvailable(1) > 0) {
-        data = uartRead(1);
+//     // 채널 1(ESP32-CAM 연결부)에서 데이터 읽기
+//     while(uartAvailable(1) > 0) {
+//         data = uartRead(1);
 
-        // 1. 시작 바이트 확인 (FRAME_STX)
-        if (idx == 0 && data == 0x02) {
-            buf[idx++] = data;
-            continue;
-        }
+//         // 1. 시작 바이트 확인 (FRAME_STX)
+//         if (idx == 0 && data == 0x02) {
+//             buf[idx++] = data;
+//             continue;
+//         }
 
-        // 2. 패킷 데이터 저장
-        if (idx > 0 && idx < 8) {
-            buf[idx++] = data;
-        }
+//         // 2. 패킷 데이터 저장
+//         if (idx > 0 && idx < 8) {
+//             buf[idx++] = data;
+//         }
 
-        // 3. 패킷 완료 및 검증
-        if (idx == 8) {
-            // 마지막 바이트가 ETX(0x03)이고 체크섬이 맞는지 확인
-            if (buf[7] == 0x03) {
-                // 체크섬 계산: CX_H ^ CX_L ^ CY_H ^ CY_L ^ DET
-                uint8_t checksum = buf[1] ^ buf[2] ^ buf[3] ^ buf[4] ^ buf[5];
+//         // 3. 패킷 완료 및 검증
+//         if (idx == 8) {
+//             // 마지막 바이트가 ETX(0x03)이고 체크섬이 맞는지 확인
+//             if (buf[7] == 0x03) {
+//                 // 체크섬 계산: CX_H ^ CX_L ^ CY_H ^ CY_L ^ DET
+//                 uint8_t checksum = buf[1] ^ buf[2] ^ buf[3] ^ buf[4] ^ buf[5];
                 
-                if (checksum == buf[6]) {
-                    // 데이터 복원 (Big Endian)
-                    int16_t cx = (int16_t)((buf[1] << 8) | buf[2]);
-                    int16_t cy = (int16_t)((buf[3] << 8) | buf[4]);
-                    bool detected = (buf[5] == 0x01);
+//                 if (checksum == buf[6]) {
+//                     // 데이터 복원 (Big Endian)
+//                     int16_t cx = (int16_t)((buf[1] << 8) | buf[2]);
+//                     int16_t cy = (int16_t)((buf[3] << 8) | buf[4]);
+//                     bool detected = (buf[5] == 0x01);
 
-                    // 카메라 데이터 업데이트 호출
-                    gimbalSetCamData(cx, cy, detected);
-                }
-            }
-            // 패킷 처리 완료 후 인덱스 초기화 (다음 패킷 대기)
-            idx = 0;
-        }
-    }
-}
+//                     // 카메라 데이터 업데이트 호출
+//                     gimbalSetCamData(cx, cy, detected);
+//                 }
+//             }
+//             // 패킷 처리 완료 후 인덱스 초기화 (다음 패킷 대기)
+//             idx = 0;
+//         }
+//     }
+// }
 
 
 // ================ gimbal.c IMU Control 부분 START ==================
@@ -171,22 +171,39 @@ void gimbalUpdateFromIMU(float roll, float pitch, float yaw) {
 // 태스크에서 10ms 마다 호출될 서보 부드러운 구동 루프
 void gimbalTaskLoop(void) {
     for (int i = 0; i < 3; i++) {
-        float diff = servo_list[i].target_angle - servo_list[i].current_angle;
+        
+        // float diff = servo_list[i].target_angle - servo_list[i].current_angle;
+        //[수정] servo_list[ch].target_angle 대신 Getter 함수 사용
+        float diff = servoGetTargetAngle(i) - servoGetCurrentAngle(i);
         if (fabs(diff) > 0.2f) { // 0.2도 이상 차이날 때만 제어 (지터링 방지)
-            servo_list[i].current_angle += diff * servo_list[i].k;
+            // servo_list[i].current_angle += diff * servo_list[i].k;
+            //[수정] servo_list[i].current_angle 대신 Getter/Setter 함수 사용
+            float current_angle = servoGetCurrentAngle(i);
+            float k = servoGetK(i);
+            current_angle += diff * k;
+            servoSetCurrentAngle(i, current_angle);
+
             // 여기서 실제로 모터로 신호가 나갑니다.
-            servoWrite(i, (uint8_t)roundf(servo_list[i].current_angle));
+            // servoWrite(i, (uint8_t)roundf(servo_list[i].current_angle));
+            // [수정]   servo_list[i].current_angle 대신 Getter 함수 사용
+            servoWrite(i, (uint8_t)roundf(current_angle));
         }
     }
 }
 
 float gimbalGetCurrentAngle(uint8_t ch) {
     if (ch >= 3) return 0.0f; // 예외 처리
-    return servo_list[ch].current_angle;
+    // return servo_list[ch].current_angle;
+    // [수정] servo_list[ch] 대신 Getter 함수 사용
+    return servoGetCurrentAngle(ch); 
 }
 
 void gimbalReturnHome(void) {
-    servo_list[0].target_angle = 90.0f;
-    servo_list[1].target_angle = 90.0f;
-    servo_list[2].target_angle = 0.0f;
+    // servo_list[0].target_angle = 90.0f;
+    // servo_list[1].target_angle = 90.0f;
+    // servo_list[2].target_angle = 0.0f;
+    // [수정] servo_list[ch].target_angle = 90.0f 대신 Setter 함수 사용
+    servoSetTarget(0, 90.0f, 0.1f); // Yaw
+    servoSetTarget(1, 90.0f, 0.1f); // Pitch
+    servoSetTarget(2, 90.0f, 0.1f); // Roll
 }

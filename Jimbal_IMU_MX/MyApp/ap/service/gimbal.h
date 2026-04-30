@@ -50,4 +50,5 @@ void gimbalUpdateFromIMU(float roll, float pitch, float yaw);
 void gimbalTaskLoop(void);
 float gimbalGetCurrentAngle(uint8_t ch);
 void gimbalReturnHome(void);
+float servoGetCurrentAngle(uint8_t ch);
 #endif

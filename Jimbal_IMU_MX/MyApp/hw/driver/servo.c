@@ -164,8 +164,21 @@ void servoSweep(uint8_t ch, float k) {
     servoSetTarget(ch, target, k);
 }
 
-
+void servoSetCurrentAngle(uint8_t ch, float angle) {
+    if (ch > 2) return;
+    servo_list[ch].current_angle = angle;
+}
 
 float servoGetCurrentAngle(uint8_t ch) {
+    if (ch > 2) return 90.0f;
     return servo_list[ch].current_angle;
+}
+float servoGetTargetAngle(uint8_t ch) {
+    if (ch > 2) return 90.0f;
+    return servo_list[ch].target_angle;
+}
+
+float servoGetK(uint8_t ch) {
+    if (ch > 2) return 0.1f;
+    return servo_list[ch].k;
 }

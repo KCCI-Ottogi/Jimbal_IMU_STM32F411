@@ -426,7 +426,6 @@ void cliGimbal(uint8_t argc, char **argv) {
 
 void gimbalSystemTask(void *argument)
 {
-    serviceServoInit(); 
     LOG_INF("Gimbal System Task Started!");
 
     uint32_t last_print_tick = 0; // 출력 시간 계산용
