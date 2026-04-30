@@ -21,7 +21,8 @@ void servoTotalTest(void); // 전체 테스트 함수 추가
 // 보간 제어용 인터페이스
 void servoSetTarget(uint8_t ch, float target, float k);
 void servoSmoothUpdate(void);
-
+void servoSetTargetAll(float target0, float target1, float target2, float k);
+void servoSweep(uint8_t ch, float k);
 
 
 #endif

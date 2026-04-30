@@ -146,3 +146,20 @@ void servoSmoothUpdate(void) {
         }
     }
 }
+
+// [추가] 3축 모든 서보의 목표 각도와 속도를 한 번에 설정 (동시성 확보)
+void servoSetTargetAll(float target0, float target1, float target2, float k) {
+    servoSetTarget(0, target0, k);
+    servoSetTarget(1, target1, k);
+    servoSetTarget(2, target2, k);
+}
+
+// [추가] 현재 위치를 기준으로 반대편 끝단으로 왕복 목표 설정
+void servoSweep(uint8_t ch, float k) {
+    if (ch > 2) return;
+
+    // 현재 각도가 중앙(90도)보다 작으면 180도로, 크거나 같으면 0도로 목표 변경
+    float target = (servo_list[ch].current_angle < 90.0f) ? 180.0f : 0.0f;
+    
+    servoSetTarget(ch, target, k);
+}
