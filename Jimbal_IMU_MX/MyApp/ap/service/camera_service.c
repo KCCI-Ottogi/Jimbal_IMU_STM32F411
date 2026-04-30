@@ -7,44 +7,49 @@ static camera_data_t cam_data;
 camera_data_t* cameraGetLatestData(void) {
     return &cam_data;
 }
-
 void cameraServiceUpdate(void) {
     uint8_t data;
-    static uint8_t buf[10]; // 패킷 길이를 10으로 확장
+    static uint8_t buf[7]; // 10 -> 7바이트로 변경
     static uint8_t idx = 0;
 
     while(uartAvailable(1) > 0) {
         data = uartRead(1);
 
-        if (idx == 0 && data == 0x02) { // STX (시작)
-            buf[idx++] = data;
+        // 1. STX 찾기
+        if (idx == 0) {
+            if (data == 0x02) {
+                buf[idx++] = data;
+            }
             continue;
         }
 
-        if (idx > 0 && idx < 10) {
+        // 2. 데이터 채우기
+        if (idx < 7) {
             buf[idx++] = data;
         }
 
-        if (idx == 10) {
-            if (buf[9] == 0x03) { // ETX (종료)
-                // 체크섬: X(2) ^ Y(2) ^ Detect(1) ^ Area(2)
-                uint8_t checksum = buf[1] ^ buf[2] ^ buf[3] ^ buf[4] ^ buf[5] ^ buf[6] ^ buf[7];
-                
-                if (checksum == buf[8]) {
-                    cam_data.x = (int16_t)((buf[1] << 8) | buf[2]);
-                    cam_data.y = (int16_t)((buf[3] << 8) | buf[4]);
-                    cam_data.is_detected = (buf[5] == 0x01);
-                    cam_data.area = (uint16_t)((buf[6] << 8) | buf[7]);
+        // 3. 패킷 완성 (7바이트)
+        if (idx == 7) {
+            // ETX(0x03) 확인
+            if (buf[6] == 0x03) {
+                // 상대방 패킷에는 체크섬이 없으므로 바로 파싱 진행
+                cam_data.x = (int16_t)((buf[1] << 8) | buf[2]);
+                cam_data.y = (int16_t)((buf[3] << 8) | buf[4]);
+                cam_data.is_detected = (buf[5] == 0x01);
+                // cam_data.area = 0; 
 
-                    // [테스트 로그] STM32 터미널에서 확인용
-                    if (cam_data.is_detected) {
-                        cliPrintf("[STM32_LOG] CX=%d CY=%d AREA=%d\r\n", cam_data.x, cam_data.y, cam_data.area);
-                    } else {
-                        cliPrintf("[STM32_LOG] 타겟 없음\r\n");
-                    }
+                // 로그 출력
+                if (cam_data.is_detected) {
+                    cliPrintf("[STM32_LOG] CX=%d CY=%d \r\n", cam_data.x, cam_data.y);
+                } else {
+                    cliPrintf("[STM32_LOG] Target Lost\r\n");
                 }
+            } else {
+                // 마지막 바이트가 0x03이 아니면 데이터가 밀린 것이므로 초기화 후 재검색
+                idx = 0; 
+                continue;
             }
-            idx = 0;
+            idx = 0; // 다음 패킷을 위해 인덱스 초기화
         }
     }
 }

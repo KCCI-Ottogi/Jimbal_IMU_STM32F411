@@ -52,7 +52,7 @@ bool uartInit(void)
     }
 
     // bool ret = uartOpen(0, 1152000); // 9600 -> 프로젝트 시 115200으로 설정
-    uartOpen(0, 9600); // USART2// USART2
+    uartOpen(0, 115200); // USART2// USART2
     uartOpen(1, 115200); // USART1 (ESP32)
 
     
@@ -156,12 +156,10 @@ bool uartOpen(uint8_t ch, uint32_t baudrate)
     else        p_huart = &huart1;
 
     p_huart->Init.BaudRate = baudrate;
-
-    if (HAL_UART_DeInit(&huart2) != HAL_OK)
-        return false;
-
-    if (HAL_UART_Init(&huart2) != HAL_OK)
-        return false;
+    
+    // huart2 고정이 아니라 p_huart를 사용해야 함
+    if (HAL_UART_DeInit(p_huart) != HAL_OK) return false;
+    if (HAL_UART_Init(p_huart) != HAL_OK) return false;
 
     return true;
 }

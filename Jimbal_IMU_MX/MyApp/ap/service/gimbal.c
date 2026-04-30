@@ -79,33 +79,33 @@
 
 
 
-
 void gimbalUpdate(void) {
     camera_data_t* p_cam = cameraGetLatestData();
 
-    // 1. 타겟이 인식되었을 때만 계산 진행
-    if (p_cam->is_detected && p_cam->area > 50) {
+    if (p_cam->is_detected) {
+        // 1. 화면 중심점 설정 (160x120 해상도 기준)
+        const int16_t center_x = 80; 
+        const int16_t center_y = 60;
+
+        // 2. 오차 계산 (중심에서 얼마나 떨어져 있는가)
+        float error_x = (float)(center_x - p_cam->x); // 왼쪽이면 양수, 오른쪽이면 음수
+        // [수정] Y축(Tilt) 부호 반전: (center_y - p_cam->y) -> (p_cam->y - center_y)
+        float error_y = (float)(p_cam->y - center_y);
+
         
-        // [Pan 계산] 중심 160 기준 오차 계산
-        float error_x = (float)(160 - p_cam->x);
-        float next_target_x = servoGetCurrentAngle(0) + (error_x * 0.07f);
+        // 3. 각도 변환 및 업데이트
+        // 감도(0.1f ~ 0.2f)를 곱해 현재 각도에서 조금씩 이동합니다.
+        // TRG 값이 180을 넘지 않도록 하는 것이 핵심입니다.
+        float next_target_x = servoGetCurrentAngle(0) + (error_x * 0.15f); 
+        float next_target_y = servoGetCurrentAngle(1) + (error_y * 0.15f);
 
-        // [Tilt 계산] 중심 120 기준 오차 계산
-        float error_y = (float)(120 - p_cam->y);
-        float next_target_y = servoGetCurrentAngle(1) + (error_y * 0.07f);
-
-        // 2. 서보 목표값 설정
+        // 4. 서보 목표값 설정
         servoSetTarget(0, next_target_x, 0.15f);
         servoSetTarget(1, next_target_y, 0.15f);
 
-        // 3. [최종 로그 확인] 이 로그가 터미널에 찍히면 통신+계산 모두 성공!
-        // CX/CY: 카메라입력, AREA: 물체크기, TRG_X/Y: 짐벌이 계산한 목표각도
-        cliPrintf("[GIMBAL] IN(X:%d, Y:%d, A:%d) -> OUT(TRG_X:%.1f, TRG_Y:%.1f)\r\n", 
-                  p_cam->x, p_cam->y, p_cam->area, next_target_x, next_target_y);
-
-    } else if (p_cam->is_detected && p_cam->area <= 50) {
-        // 면적이 너무 작으면 노이즈로 간주하고 무시 로그
-        cliPrintf("[GIMBAL] Noise Ignored (Area: %d)\r\n", p_cam->area);
+        // [디버그 로그] 이제 TRG 값이 90도 근처에서 안정적으로 움직일 겁니다.
+        cliPrintf("[GIMBAL] IN(%d,%d) -> ERR(%.1f,%.1f) -> TRG(%.1f,%.1f)\r\n", 
+                  p_cam->x, p_cam->y, error_x, error_y, next_target_x, next_target_y);
     }
 }
 
