@@ -8,7 +8,7 @@
 #include "monitor.h"
 #include "cli.h"
 // #include "servo.h" // 추가
-#include "service/gimbal.h"
+#include "gyro_service.h"
 
 void apInit(void);
 void apMain(void);

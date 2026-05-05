@@ -93,11 +93,11 @@ bool Gyro_Read(Gyro_Data_t *pData) {
     float acc_roll  = atan2f((float)pData->accel_y, (float)pData->accel_z) * RAD_TO_DEG;
     float acc_pitch = atan2f(-(float)pData->accel_x, sqrtf((float)pData->accel_y * pData->accel_y + (float)pData->accel_z * pData->accel_z)) * RAD_TO_DEG;
 
-    // 4. 상보 필터 (Complementary Filter)
-    // 자이로의 빠른 반응성 + 가속도의 절대 위치 결합
-    // 연산속도 1순위: 복잡한 칼만 필터 대신 실수 곱셈/덧셈으로만 구성
-    pData->roll  = ALPHA * (pData->roll  + (pData->gyro_x / GYRO_SENS) * dt) + (1.0f - ALPHA) * acc_roll;
-    pData->pitch = ALPHA * (pData->pitch + (pData->gyro_y / GYRO_SENS) * dt) + (1.0f - ALPHA) * acc_pitch;
+    // // 4. 상보 필터 (Complementary Filter)
+    // // 자이로의 빠른 반응성 + 가속도의 절대 위치 결합
+    // // 연산속도 1순위: 복잡한 칼만 필터 대신 실수 곱셈/덧셈으로만 구성
+    // pData->roll  = ALPHA * (pData->roll  + (pData->gyro_x / GYRO_SENS) * dt) + (1.0f - ALPHA) * acc_roll;
+    // pData->pitch = ALPHA * (pData->pitch + (pData->gyro_y / GYRO_SENS) * dt) + (1.0f - ALPHA) * acc_pitch;
 
     return true;
 }

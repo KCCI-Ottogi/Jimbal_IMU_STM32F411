@@ -1,6 +1,6 @@
 /* gimbal.c */
 
-#include "gimbal.h"
+#include "gyro_service.h"
 #include <math.h>
 
 
