@@ -7,6 +7,7 @@
 #include "hw.h"
 #include "monitor.h"
 #include "cli.h"
+#
 // #include "servo.h" // 추가
 #include "gyro_service.h"
 
@@ -18,7 +19,8 @@ void apSyncPeriods(uint32_t period);
 // FreeRTOS Task 함수 선언
 void ledSystemTask(void *argument);
 void monitorSystemTask(void *argument);
-void gyroSystemTask(void *argument); // 추가됨
-void magSystemTask(void *argument);  // 추가됨
-
+void gyroSystemTask(void *argument); 
+void magSystemTask(void *argument);  
+void startMonitorStartTask(void *argument);
+void showStack(void);
 #endif //__AP_AP_H_

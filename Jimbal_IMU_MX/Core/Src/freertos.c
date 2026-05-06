@@ -58,7 +58,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t myTaskLedHandle;
 const osThreadAttr_t myTaskLed_attributes = {
   .name = "myTaskLed",
-  .stack_size = 256 * 4,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for myTaskGyro */
@@ -86,15 +86,15 @@ const osThreadAttr_t myTaskMag_attributes = {
 osThreadId_t myTaskGimbalHandle;
 const osThreadAttr_t myTaskGimbal_attributes = {
   .name = "myTaskGimbal",
-  .stack_size = 512 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityNormal2,
 };
-/* Definitions for myTaskTemp */
-osThreadId_t myTaskTempHandle;
-const osThreadAttr_t myTaskTemp_attributes = {
-  .name = "myTaskTemp",
+/* Definitions for stackMonitorTas */
+osThreadId_t stackMonitorTasHandle;
+const osThreadAttr_t stackMonitorTas_attributes = {
+  .name = "stackMonitorTas",
   .stack_size = 256 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for GyroReadySem */
 osSemaphoreId_t GyroReadySemHandle;
@@ -113,9 +113,21 @@ void gyroSystemTask(void *argument);
 void monitorSystemTask(void *argument);
 void magSystemTask(void *argument);
 void gimbalSystemTask(void *argument);
-void tempSystemTask(void *argument);
+void myStackMonitorTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* Hook prototypes */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
+
+/* USER CODE BEGIN 4 */
+__weak void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+{
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+   called if a stack overflow is detected. */
+}
+/* USER CODE END 4 */
 
 /**
   * @brief  FreeRTOS initialization
@@ -166,8 +178,8 @@ void MX_FREERTOS_Init(void) {
   /* creation of myTaskGimbal */
   myTaskGimbalHandle = osThreadNew(gimbalSystemTask, NULL, &myTaskGimbal_attributes);
 
-  /* creation of myTaskTemp */
-  myTaskTempHandle = osThreadNew(tempSystemTask, NULL, &myTaskTemp_attributes);
+  /* creation of stackMonitorTas */
+  stackMonitorTasHandle = osThreadNew(myStackMonitorTask, NULL, &stackMonitorTas_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -287,22 +299,22 @@ __weak void gimbalSystemTask(void *argument)
   /* USER CODE END gimbalSystemTask */
 }
 
-/* USER CODE BEGIN Header_tempSystemTask */
+/* USER CODE BEGIN Header_myStackMonitorTask */
 /**
-* @brief Function implementing the myTaskTemp thread.
+* @brief Function implementing the stackMonitorTas thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_tempSystemTask */
-__weak void tempSystemTask(void *argument)
+/* USER CODE END Header_myStackMonitorTask */
+__weak void myStackMonitorTask(void *argument)
 {
-  /* USER CODE BEGIN tempSystemTask */
+  /* USER CODE BEGIN myStackMonitorTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END tempSystemTask */
+  /* USER CODE END myStackMonitorTask */
 }
 
 /* Private application code --------------------------------------------------*/

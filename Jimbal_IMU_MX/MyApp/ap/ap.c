@@ -1,8 +1,6 @@
 #include "ap.h"
-#include "gyro.h"
-#include "mag.h"
 #include "cmsis_os2.h"
-#include "cli.h"
+
 
 // FreeRTOS 세마포어 핸들
 extern osSemaphoreId_t GyroReadySemHandle;
@@ -118,21 +116,28 @@ void cliButton(uint8_t argc, char **argv)
 void cliImu(uint8_t argc, char **argv) {
   if (argc >= 2) {
     if (strcmp(argv[1], "on") == 0) {
-      imu_report_period = (argc == 3) ? atoi(argv[2]) : 1000; // 기본값 500ms
-      Gyro_StartAuto(); // MPU6050 인터럽트 켜기
-      Mag_StartAuto();  // HMC5883L 연속측정 켜기
-      LOG_INF("IMU Report : ON (%d ms)", imu_report_period);
+      uint32_t period = (argc == 3) ? atoi(argv[2]) : 500; 
+      if(!isMonitoringOn() && period < 100) period = 100;
+      
+      // ★ 복구 로직: "imu on"을 입력할 때마다 하드웨어 초기화 재시도
+      cliPrintf("Re-initializing I2C & Sensors...\r\n");
+      // MyI2C_Init; // I2C 버스 복구 및 활성화
+      is_gyro_ok = Gyro_Init(); 
+      if(!is_gyro_ok) {
+          cliPrintf("ERROR: Sensor Init Failed. Check Wires.\r\n");
+          return; // 선이 아직 안 꽂혀있으면 실행 중지
+      }
+      // 성공하면 계속 진행
+      Gyro_StartAuto(); 
+      imu_report_period = period;
+      cliPrintf("IMU Report : ON (%d ms)\r\n", imu_report_period);
     } else if (strcmp(argv[1], "off") == 0) {
       imu_report_period = 0;
       Gyro_StopAuto();
-      Mag_StopAuto();
-      LOG_INF("IMU Report : OFF");
+      cliPrintf("IMU Report : OFF\r\n");
     }
-  } else {
-    cliPrintf("Usage: imu [on|off] [period]\r\n");
   }
 }
-
 static bool isSafeAddress(uint32_t addr)
 {
   // 1. f411 flash
@@ -365,36 +370,8 @@ void cliSys(uint8_t argc, char **argv)
     cliPrintf("Usage: sys [reset]\r\n");
   }
 }
-static uint32_t temp_read_period = 0;
-void cliTemp(uint8_t argc, char **argv){
-  if(argc==1)
-  {
-    if(temp_read_period >0){
-      tempStopAuto();
-    }
-    temp_read_period=0;
-    float t=tempReadSingle();
-    cliPrintf("Current Temp: %.2f *C\r\n", t);
-  }
-  else if(argc==2){
-    
-    int period =atoi(argv[1]);
-    if(period>0){
-      tempStartAuto();
-      temp_read_period=period;
-      cliPrintf("Temperature Auto-Read Started (%d ms)\r\n",period);
-    }
-    else{
-      tempStopAuto();
-      cliPrintf("Invalid Period\r\n");
-    }
-  }
-  else{
-    tempStopAuto();
-    cliPrintf("Usage: temp\r\n");
-    cliPrintf("       temp [period]\r\n");
-  }
-}
+
+
 
 
 // ==========================================
@@ -475,23 +452,9 @@ void gimbalSystemTask(void *argument)
     }
 }
 
-void tempSystemTask(void *argument)
-{
-    while (1) {
-        if (temp_read_period > 0) {
-            tempStartAuto();
-            float t = tempReadAuto();
-            if (isMonitoringOn()) {
-                monitorUpdateValue(ID_ENV_TEMP, TYPE_FLOAT, &t);
-            } else {
-                cliPrintf("Current Temp: %.2f *C\r\n", t);
-            }
-            osDelay(temp_read_period);
-        } else {
-            osDelay(50);
-        }
-    }
-}
+
+
+
 void StartDefaultTask(void *argument)
 {
   apInit();
@@ -554,8 +517,13 @@ void gyroSystemTask(void *argument) {
   while (1) {
     if (is_gyro_ok && GyroReadySemHandle != NULL) {
       if (osSemaphoreAcquire(GyroReadySemHandle, osWaitForever) == osOK) {
-        
-        if (Gyro_Read(&gyroData)) {
+        // 읽기 실패 시 복구 대기 상태로 전환
+        if (!Gyro_Read(&gyroData)) {
+            is_gyro_ok = false;
+            cliPrintf("\r\n[ALARM] Sensor Disconnected! Type 'imu off' then 'imu on' to recover.\r\n");
+            continue; 
+        }
+        else if (Gyro_Read(&gyroData)) {
           
           // 1. 시간 간격(dt) 계산
           uint32_t now = osKernelGetTickCount();
@@ -584,7 +552,7 @@ void gyroSystemTask(void *argument) {
         }
       }
     } else {
-      osDelay(1000); 
+      osDelay(100); 
     }
   }
 }
@@ -601,6 +569,34 @@ void magSystemTask(void *argument) {
   }
 }
 
+// extern osThreadId_t defaultTaskHandle;
+// extern osThreadId_t myTaskLedHandle;;
+// extern osThreadId_t myTaskGyroHandle;
+// extern osThreadId_t myTaskMonitorHandle;
+// extern osThreadId_t myTaskMagHandle;
+// extern osThreadId_t myTaskGimbalHandle;
+// extern osThreadId_t stackMonitorTasHandle;
+
+// static uint32_t task1Stack, task2Stack, task3Stack, task4Stack, task5Stack, task6Stack, task7Stack;
+// void showStack() {
+//   task1Stack = osThreadGetStackSpace(defaultTaskHandle);
+//   task2Stack = osThreadGetStackSpace(myTaskLedHandle);
+//   task3Stack = osThreadGetStackSpace(myTaskGyroHandle);
+//   task4Stack = osThreadGetStackSpace(myTaskMonitorHandle);
+//   task5Stack = osThreadGetStackSpace(myTaskMagHandle);
+//   task6Stack = osThreadGetStackSpace(myTaskGimbalHandle);
+//   task7Stack = osThreadGetStackSpace(stackMonitorTasHandle);
+
+//   printf("Stack free - Task1: %lu Byte\t Task2: %lu Byte\t Task3: %lu Byte\t \r\n", task1Stack, task2Stack, task3Stack);
+//   printf("Task4: %lu Byte\t Task5: %lu Byte\t Task6: %lu Byte\t Task7: %lu Byte\r\n", task4Stack, task5Stack, task6Stack, task7Stack);
+// }
+
+// void startMonitorStartTask(void *argument){
+//   for(;;){
+//     osDelay(5000);
+//     showStack();
+//   }
+// }
 
 void apStopAutoTask(void){
   monitorOff();
@@ -674,7 +670,7 @@ void apInit(void)
   cliAdd("gpio", cliGpio);
   cliAdd("md", cliMd);
     cliAdd("button", cliButton);
-    cliAdd("temp", cliTemp);    
+    // cliAdd("temp", cliTemp);    
   cliAdd("imu", cliImu); // IMU 명령어 추가
   cliAdd("servo", cliServo);
   cliAdd("gim", cliGimbal);
@@ -691,3 +687,21 @@ void apMain(void)
     osDelay(1);
   }
 }
+
+
+// void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+// {
+//    /* Run time stack overflow checking is performed if
+//    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+//    called if a stack overflow is detected. */
+//   HAL_UART_DeInit(&huart3);
+//   HAL_UART_Init(&huart3);
+
+//   char msg[100];
+//   int len = snprintf(msg, sizeof(msg), "Stack Overflow detectedin Task: %s\r\n", pcTaskName);
+//   HAL_UART_Transmit(&huart3, (uint8_t*)msg, len, HAL_MAX_DELAY);
+//   showStack();
+
+//   while(1);
+   
+// }
