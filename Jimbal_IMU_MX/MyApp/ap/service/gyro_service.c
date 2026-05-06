@@ -48,8 +48,8 @@ void gimbalUpdateFromIMU(float roll, float pitch, float yaw) {
     if (target_r < 10.0f) target_r = 10.0f;
     if (target_r > 170.0f) target_r = 170.0f;
 
-    if (target_p < 10.0f) target_p = 10.0f;
-    if (target_p > 170.0f) target_p = 170.0f;
+    if (target_p < 40.0f) target_p = 40.0f;
+    if (target_p > 140.0f) target_p = 140.0f;
 
     // 3. 목표 각도 업데이트// servo_list[0].target_angle = target_r;
     // servo_list[1].target_angle = target_p;

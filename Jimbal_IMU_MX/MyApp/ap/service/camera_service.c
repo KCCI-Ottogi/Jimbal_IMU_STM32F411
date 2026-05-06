@@ -74,7 +74,7 @@ static void updateGimbalPID(void) {
 
 void cameraServiceUpdate(void) {
     uint8_t data;
-    static uint8_t buf[9]; // 9바이트 패킷 버퍼[cite: 5]
+    static uint8_t buf[8]; // 9바이트 패킷 버퍼[cite: 5]
     static uint8_t idx = 0;
 
     // UART로부터 데이터 수신 (Board A -> Board B)
@@ -88,19 +88,26 @@ void cameraServiceUpdate(void) {
         }
 
         // 데이터 채우기
-        if (idx < 9) buf[idx++] = data;
+        if (idx < 7) buf[idx++] = data;
 
         // 패킷 완성 (9바이트)
-        if (idx == 9) {
-            if (buf[8] == 0x03) { // ETX 확인
+        if (idx >= 7) {
+            if (buf[6] == 0x03) { // ETX 확인
                 // 좌표 및 면적 파싱
                 cam_data.x = (int16_t)((buf[1] << 8) | buf[2]);
                 cam_data.y = (int16_t)((buf[3] << 8) | buf[4]);
-                cam_data.area = (uint16_t)((buf[5] << 8) | buf[6]);
-                cam_data.is_detected = (buf[7] == 0x01);
-
+                // cam_data.area = (uint16_t)((buf[5] << 8) | buf[6]);
+                cam_data.is_detected = (buf[5] == 0x01);
+                
+                // [테스트 로그] STM32 터미널에서 확인용
+                if (cam_data.is_detected) {
+                    cliPrintf("[STM32_LOG] CX=%d CY=%d AREA=%d\r\n", cam_data.x, cam_data.y, cam_data.area);
+                } else {
+                    cliPrintf("[STM32_LOG] 타겟 없음\r\n");
+                }
                 // [핵심] 파싱 완료 즉시 짐벌 제어 수행 (지연 최소화)[cite: 5, 8]
                 updateGimbalPID(); 
+                
             }
             idx = 0; // 다음 패킷 준비
         }

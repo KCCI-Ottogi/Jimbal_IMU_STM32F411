@@ -450,7 +450,7 @@ void gimbalSystemTask(void *argument)
         servoSmoothUpdate(); 
 
         /* 4. 제어 주기 조절 (10ms) */
-        osDelay(10); 
+        osDelay(100); 
     }
 }
 
