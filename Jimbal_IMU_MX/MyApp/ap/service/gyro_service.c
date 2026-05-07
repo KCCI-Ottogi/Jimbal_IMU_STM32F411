@@ -1,7 +1,15 @@
-/* gimbal.c */
+
+
+/* gyro_service.c */
 
 #include "gyro_service.h"
 #include <math.h>
+
+
+#include "gimbal_control.h" // gimbalUpdateFromIMU 보고용
+#include "cli.h"            // cliPrintf, isMonitoringOn 사용
+#include "gyro.h"           // Gyro_Read, Gyro_Data_t 사용
+
 
 
 // void gimbalUpdate(void) {
@@ -86,19 +94,50 @@ void gimbalTaskLoop(void) {
     }
 }
 
-float gimbalGetCurrentAngle(uint8_t ch) {
-    if (ch >= 3) return 0.0f; // 예외 처리
-    // return servo_list[ch].current_angle;
-    // [수정] servo_list[ch] 대신 Getter 함수 사용
-    return servoGetCurrentAngle(ch); 
-}
+// float gimbalGetCurrentAngle(uint8_t ch) {
+//     if (ch >= 3) return 0.0f; // 예외 처리
+//     // return servo_list[ch].current_angle;
+//     // [수정] servo_list[ch] 대신 Getter 함수 사용
+//     return servoGetCurrentAngle(ch); 
+// }
 
-void gimbalReturnHome(void) {
-    // servo_list[0].target_angle = 90.0f;
-    // servo_list[1].target_angle = 90.0f;
-    // servo_list[2].target_angle = 0.0f;
-    // [수정] servo_list[ch].target_angle = 90.0f 대신 Setter 함수 사용
-    servoSetTarget(0, 90.0f, 0.1f); // Yaw
-    servoSetTarget(1, 90.0f, 0.1f); // Pitch
-    servoSetTarget(2, 90.0f, 0.1f); // Roll
+// void gimbalReturnHome(void) {
+//     // servo_list[0].target_angle = 90.0f;
+//     // servo_list[1].target_angle = 90.0f;
+//     // servo_list[2].target_angle = 0.0f;
+//     // [수정] servo_list[ch].target_angle = 90.0f 대신 Setter 함수 사용
+//     servoSetTarget(0, 90.0f, 0.1f); // Yaw
+//     servoSetTarget(1, 90.0f, 0.1f); // Pitch
+//     servoSetTarget(2, 90.0f, 0.1f); // Roll
+// }
+
+
+///////////////////
+
+
+// /* ap.c에 있는 변수를 가져다 쓰겠다는 선언 */
+// extern volatile uint32_t gimbal_report_period;
+
+void gyroServiceUpdate(void) {
+    static Gyro_Data_t imu_data; 
+
+    if (Gyro_Read(&imu_data)) {
+        gimbalSettingIMU(imu_data.roll, imu_data.pitch, imu_data.yaw);
+    }
+
+    // [CLI 출력 로직] ap.c에서 이사 옴
+    // static uint32_t last_print_tick = 0;
+    
+    // if (gimbal_report_period > 0) {
+    //     uint32_t now = osKernelGetTickCount();
+    //     if (now - last_print_tick >= gimbal_report_period) {
+    //         last_print_tick = now;
+
+    //         // 모니터링 모드가 아닐 때만 예쁘게 출력
+    //         if (!isMonitoringOn()) {
+    //             cliPrintf("GYRO [R: %3d | P: %3d | Y: %3d]\r\n", 
+    //                       (int)imu_data.roll, (int)imu_data.pitch, (int)imu_data.yaw);
+    //         }
+    //     }
+    // }
 }

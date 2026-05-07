@@ -1,7 +1,8 @@
 #include "camera_service.h"
 #include "uart.h"
-#include "servo.h" // 짐벌 제어를 위해 추가
+// #include "servo.h" // 짐벌 제어를 위해 추가
 #include "cli.h" 
+#include "gimbal_control.h" // 보정치 전달을 위해 추가 (servo.h는 제거 가능)
 
 // 최신 카메라 데이터를 저장할 구조체
 static camera_data_t cam_data;
@@ -25,8 +26,53 @@ camera_data_t* cameraGetLatestData(void) {
     return &cam_data;
 }
 
+
+
+void cameraDataParsing(void) {
+    uint8_t data;
+    static uint8_t buf[8]; // 9바이트 패킷 버퍼[cite: 5]
+    static uint8_t idx = 0;
+
+    // UART로부터 데이터 수신 (Board A -> Board B)
+    while(uartAvailable(1) > 0) {
+        data = uartRead(1);
+
+        // STX(0x02) 찾기
+        if (idx == 0) {
+            if (data == 0x02) buf[idx++] = data;
+            continue;
+        }
+
+        // 데이터 채우기
+        if (idx < 7) buf[idx++] = data;
+
+        // 패킷 완성 (9바이트)
+        if (idx >= 7) {
+            if (buf[6] == 0x03) { // ETX 확인
+                // 좌표 및 면적 파싱
+                cam_data.x = (int16_t)((buf[1] << 8) | buf[2]);
+                cam_data.y = (int16_t)((buf[3] << 8) | buf[4]);
+                // cam_data.area = (uint16_t)((buf[5] << 8) | buf[6]);
+                cam_data.is_detected = (buf[5] == 0x01);
+                
+                // [테스트 로그] STM32 터미널에서 확인용
+                if (cam_data.is_detected) {
+                    cliPrintf("[STM32_LOG] CX=%d CY=%d AREA=%d\r\n", cam_data.x, cam_data.y, cam_data.area);
+                } else {
+                    cliPrintf("[STM32_LOG] 타겟 없음\r\n");
+                }
+                // [핵심] 파싱 완료 즉시 짐벌 제어 수행 (지연 최소화)[cite: 5, 8]
+                // cameraServicePIDUpdate(); 
+                
+            }
+            idx = 0; // 다음 패킷 준비
+        }
+    }
+}
+
+
 // [핵심] 실제 짐벌을 움직이는 PID 계산 함수[cite: 5]
-static void updateGimbalPID(void) {
+void cameraServicePIDUpdate(void) {
     if (!cam_data.is_detected) {
         // 물체를 놓치면 급격한 회전을 방지하기 위해 누적 데이터 초기화[cite: 5]
         error_x_sum = error_x_prev = error_y_sum = error_y_prev = 0.0f;
@@ -72,59 +118,24 @@ static void updateGimbalPID(void) {
     // servoSetTarget(1, servoGetCurrentAngle(1) + pid_y, 0.20f);
 
 
+
+
     // GetCurrentAngle 대신 GetTargetAngle을 사용하여 연속성을 확보합니다.
-    float next_x = servoGetTargetAngle(2) + pid_x;
-    float next_y = servoGetTargetAngle(1) + pid_y;
+    // float next_x = servoGetTargetAngle(2) + pid_x;
+    // float next_y = servoGetTargetAngle(1) + pid_y;
 
-    // 각도 제한 (Clamping)
-    if (next_x < 10.0f) next_x = 10.0f;
-    if (next_x > 170.0f) next_x = 170.0f;
-    if (new_y < 40.0f)  new_y = 40.0f;
-    if (new_y > 140.0f) new_y = 140.0f;
+    // // 각도 제한 (Clamping)
+    // if (next_x < 10.0f) next_x = 10.0f;
+    // if (next_x > 170.0f) next_x = 170.0f;
+    // if (new_y < 40.0f)  new_y = 40.0f;
+    // if (new_y > 140.0f) new_y = 140.0f;
     
+
+
     // k값을 0.15f 정도로 낮춰서 더 부드럽게 연결합니다.
-    servoSetTarget(2, next_x, 0.15f);
-    servoSetTarget(1, next_y, 0.15f);
-}
+    // servoSetTarget(2, next_x, 0.15f);
+    // servoSetTarget(1, next_y, 0.15f);
 
-void cameraServiceUpdate(void) {
-    uint8_t data;
-    static uint8_t buf[8]; // 9바이트 패킷 버퍼[cite: 5]
-    static uint8_t idx = 0;
-
-    // UART로부터 데이터 수신 (Board A -> Board B)
-    while(uartAvailable(1) > 0) {
-        data = uartRead(1);
-
-        // STX(0x02) 찾기
-        if (idx == 0) {
-            if (data == 0x02) buf[idx++] = data;
-            continue;
-        }
-
-        // 데이터 채우기
-        if (idx < 7) buf[idx++] = data;
-
-        // 패킷 완성 (9바이트)
-        if (idx >= 7) {
-            if (buf[6] == 0x03) { // ETX 확인
-                // 좌표 및 면적 파싱
-                cam_data.x = (int16_t)((buf[1] << 8) | buf[2]);
-                cam_data.y = (int16_t)((buf[3] << 8) | buf[4]);
-                // cam_data.area = (uint16_t)((buf[5] << 8) | buf[6]);
-                cam_data.is_detected = (buf[5] == 0x01);
-                
-                // [테스트 로그] STM32 터미널에서 확인용
-                if (cam_data.is_detected) {
-                    cliPrintf("[STM32_LOG] CX=%d CY=%d AREA=%d\r\n", cam_data.x, cam_data.y, cam_data.area);
-                } else {
-                    cliPrintf("[STM32_LOG] 타겟 없음\r\n");
-                }
-                // [핵심] 파싱 완료 즉시 짐벌 제어 수행 (지연 최소화)[cite: 5, 8]
-                // updateGimbalPID(); 
-                
-            }
-            idx = 0; // 다음 패킷 준비
-        }
-    }
+    // 이 pid_x, pid_y가 gimbal.c의 cam_offset 변수에 저장됩니다.
+    gimbalSettingCamOffset(pid_x, pid_y);
 }

@@ -10,6 +10,8 @@
 #include "camera_service.h" // camera_data_t, cameraGetLatestData 정의 포함
 #include "servo.h"          // servoSetTarget, servoGetCurrentAngle 정의 포함
 
+#include "monitor.h"
+
 // // 서보 상태 구조체
 // typedef struct {
 //   float current_angle;
@@ -49,6 +51,10 @@ void gimbalUpdate(void);
 void gimbalUpdateFromIMU(float roll, float pitch, float yaw);
 void gimbalTaskLoop(void);
 float gimbalGetCurrentAngle(uint8_t ch);
-void gimbalReturnHome(void);
-float servoGetCurrentAngle(uint8_t ch);
+// void gimbalReturnHome(void);
+// float servoGetCurrentAngle(uint8_t ch);
+
+////////
+void gyroServiceUpdate(void);
+
 #endif

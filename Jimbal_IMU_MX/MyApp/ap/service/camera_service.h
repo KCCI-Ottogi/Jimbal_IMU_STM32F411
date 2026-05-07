@@ -17,10 +17,15 @@ typedef struct {
  */
 void cameraServiceInit(void);
 
+
+
 /**
  * @brief UART로부터 9바이트 패킷을 수신하고 즉시 PID 기반 짐벌 제어를 수행
  */
-void cameraServiceUpdate(void);
+void cameraDataParsing(void);
+
+
+void cameraServicePIDUpdate(void);
 
 /**
  * @brief 최신 파싱된 카메라 데이터 주소 반환
