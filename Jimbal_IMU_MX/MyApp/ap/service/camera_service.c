@@ -68,8 +68,21 @@ static void updateGimbalPID(void) {
 
     // 6. 현재 각도에 계산된 PID 보정값을 더해 서보 명령 전달[cite: 5, 7]
     // PID가 충분히 부드러우므로 k값은 0.2f 정도로 약간 높여 응답성 확보[cite: 7]
-    servoSetTarget(2, servoGetCurrentAngle(2) + pid_x, 0.20f);
-    servoSetTarget(1, servoGetCurrentAngle(1) + pid_y, 0.20f);
+    // servoSetTarget(2, servoGetCurrentAngle(2) + pid_x, 0.20f);
+    // servoSetTarget(1, servoGetCurrentAngle(1) + pid_y, 0.20f);
+
+
+    // GetCurrentAngle 대신 GetTargetAngle을 사용하여 연속성을 확보합니다.
+    float next_x = servoGetTargetAngle(2) + pid_x;
+    float next_y = servoGetTargetAngle(1) + pid_y;
+
+    // 각도 제한 (Clamping)
+    if (next_x < 10.0f) next_x = 10.0f;
+    if (next_x > 170.0f) next_x = 170.0f;
+    
+    // k값을 0.15f 정도로 낮춰서 더 부드럽게 연결합니다.
+    servoSetTarget(2, next_x, 0.15f);
+    servoSetTarget(1, next_y, 0.15f);
 }
 
 void cameraServiceUpdate(void) {
@@ -106,7 +119,7 @@ void cameraServiceUpdate(void) {
                     cliPrintf("[STM32_LOG] 타겟 없음\r\n");
                 }
                 // [핵심] 파싱 완료 즉시 짐벌 제어 수행 (지연 최소화)[cite: 5, 8]
-                updateGimbalPID(); 
+                // updateGimbalPID(); 
                 
             }
             idx = 0; // 다음 패킷 준비

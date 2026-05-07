@@ -408,6 +408,7 @@ void gimbalSystemTask(void *argument)
     uint32_t last_print_tick = 0; // 출력 시간 계산용
 
     cameraServiceInit();   // 카메라 PID 변수(sum, prev) 초기화
+    uint32_t tick = osKernelGetTickCount();
 
     while (1) {
 
@@ -441,16 +442,16 @@ void gimbalSystemTask(void *argument)
 
         /* 1. 데이터 수집 */
         cameraServiceUpdate(); 
-        
-        /* 2. 알고리즘 적용 (목표값 계산) */
-        // IMU 담당자분과 합칠 때 여기서 gimbalUpdateFromIMU()를 같이 호출하게 됩니다.
-        // gimbalUpdate();        
+
+        /* 2. 알고리즘 적용 (10ms 고정 주기로 부드러운 계산) */
+        updateGimbalPID();
 
         /* 3. 하드웨어 출력 (보간 제어 및 PWM 발생) */
         servoSmoothUpdate(); 
 
-        /* 4. 제어 주기 조절 (10ms) */
-        osDelay(100); 
+        /* 4. 제어 주기 유지 (10ms) */
+        tick += 10; 
+        osDelayUntil(tick);
     }
 }
 
