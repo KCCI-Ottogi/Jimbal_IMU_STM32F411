@@ -79,6 +79,8 @@ static void updateGimbalPID(void) {
     // 각도 제한 (Clamping)
     if (next_x < 10.0f) next_x = 10.0f;
     if (next_x > 170.0f) next_x = 170.0f;
+    if (new_y < 40.0f)  new_y = 40.0f;
+    if (new_y > 140.0f) new_y = 140.0f;
     
     // k값을 0.15f 정도로 낮춰서 더 부드럽게 연결합니다.
     servoSetTarget(2, next_x, 0.15f);
