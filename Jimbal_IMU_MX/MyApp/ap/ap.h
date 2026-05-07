@@ -11,6 +11,7 @@
 // #include "servo.h" // 추가
 #include "gyro_service.h"
 #include "gimbal_control.h"
+#include "camera_service.h"
 
 void apInit(void);
 void apMain(void);
