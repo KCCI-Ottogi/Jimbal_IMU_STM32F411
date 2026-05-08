@@ -4,18 +4,6 @@
 
 extern TIM_HandleTypeDef htim2; // CubeMX에서 설정한 타이머 핸들러
 
-/**
- * [하드웨어 설정값 정의]
- * 지정하신 각 채널별 초기 정렬 위치 및 물리적 임계치
- */
-#define SERVO_CH0_INIT   110.0f
-#define SERVO_CH0_MAX    180
-
-#define SERVO_CH1_INIT   65.0f
-#define SERVO_CH1_MAX    130   // Pitch 축 하드웨어 제한
- 
-#define SERVO_CH2_INIT   70.0f
-#define SERVO_CH2_MAX    180
 
 // 3축 상태 저장소
 static servo_smooth_t servo_list[3];
@@ -268,5 +256,5 @@ float servoGetInitAngle(uint8_t ch) {
     if (ch == 0) return SERVO_CH0_INIT;
     if (ch == 1) return SERVO_CH1_INIT;
     if (ch == 2) return SERVO_CH2_INIT;
-    return 90.0f; // 예외 상황
+    return 0.0f; // 예외 상황
 }

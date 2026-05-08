@@ -10,22 +10,51 @@ static float imu_yaw = 0.0f;
 static float cam_offset_x = 0.0f;
 static float cam_offset_y = 0.0f;
 
+// [수정] 단순 대입용이 아닌, 계속 더해나갈 누적 변수로 변경합니다.
+static float accum_cam_offset_x = 0.0f;
+static float accum_cam_offset_y = 0.0f;
+
+// [추가] 서보 각도 계산을 위한 기준점 변수
+static float yaw_origin = -1.0f;
+static bool is_first_run = true;
+
+
 /**
  * @brief 자이로 서비스(gyro_service.c)가 호출하는 데이터 갱신 함수
  */
 void gimbalSettingIMU(float roll, float pitch, float yaw) {
     imu_roll = roll *-1 ;
     imu_pitch = pitch *-1;
-    imu_yaw = 0; //yaw *-1;
+    imu_yaw = yaw;//0; //
 }
 
+// /**
+//  * @brief 카메라 서비스(camera_service.c)가 호출하는 데이터 갱신 함수
+//  */
+// void gimbalSettingCamOffset(float x, float y) {
+//     cam_offset_x = x *-1;
+//     cam_offset_y = y;
+// }
+
 /**
- * @brief 카메라 서비스(camera_service.c)가 호출하는 데이터 갱신 함수
+ * @brief [중요 수정] 카메라 PID 출력값을 기존 값에 '누적'합니다.
  */
 void gimbalSettingCamOffset(float x, float y) {
-    cam_offset_x = x *-1;
-    cam_offset_y = y;
+    // x, y는 PID 제어기에서 나온 '보정량'입니다.
+    // 기존 누적값에 이 보정량을 더해줌으로써, 타겟이 중앙에 오면 
+    // 보정량이 0이 되어 현재의 각도를 그대로 유지하게 됩니다.
+    
+    // 0.1f는 감도 조절용 가중치입니다. 너무 느리면 키우고, 떨리면 줄이세요.
+    accum_cam_offset_x += (x * -0.1f); 
+    accum_cam_offset_y += (y * 0.1f);
+
+    // [안전장치] 누적값이 서보의 가동 범위를 벗어나지 않도록 제한합니다.
+    if (accum_cam_offset_x > 60.0f)  accum_cam_offset_x = 60.0f;
+    if (accum_cam_offset_x < -60.0f) accum_cam_offset_x = -60.0f;
+    if (accum_cam_offset_y > 40.0f)  accum_cam_offset_y = 40.0f;
+    if (accum_cam_offset_y < -40.0f) accum_cam_offset_y = -40.0f;
 }
+
 
 /**
  * @brief [통합 제어부] ap.c에서 주기적으로 호출하여 서보에 최종 명령을 내림
@@ -54,19 +83,29 @@ void gimbalSettingCamOffset(float x, float y) {
     float base_yaw   = init_y + imu_yaw; // imu_yaw 반영됨
 
     // 3. 카메라 PID 보정치 합산 (Base + Offset)
+    // float final_roll  = base_roll;
+    // float final_pitch = base_pitch + cam_offset_y;
+    // float final_yaw   = base_yaw + cam_offset_x;
+
+    // 2. [수정] 매번 초기화되는 값이 아닌, '누적된' 오프셋을 사용합니다.
     float final_roll  = base_roll;
-    float final_pitch = base_pitch + cam_offset_y;
-    float final_yaw   = base_yaw + cam_offset_x;
+    float final_pitch = base_pitch + accum_cam_offset_y;
+    float final_yaw   = base_yaw + accum_cam_offset_x;
+
+
 
     // 4. 서보 모터 하드웨어 보호를 위한 리미트 (Clamping)
-    if (final_roll < 10.0f)   final_roll = 10.0f;
-    if (final_roll > 170.0f)  final_roll = 170.0f;
+    // Roll 축 (CH0)
+    if (final_roll < SERVO_CH0_MIN) final_roll = (float)SERVO_CH0_MIN;
+    if (final_roll > SERVO_CH0_MAX) final_roll = (float)SERVO_CH0_MAX;
 
-    if (final_pitch < 40.0f)  final_pitch = 40.0f;
-    if (final_pitch > 140.0f) final_pitch = 140.0f;
+    // Pitch 축 (CH1)
+    if (final_pitch < SERVO_CH1_MIN) final_pitch = (float)SERVO_CH1_MIN;
+    if (final_pitch > SERVO_CH1_MAX) final_pitch = (float)SERVO_CH1_MAX;
 
-    if (final_yaw < 10.0f)    final_yaw = 10.0f;
-    if (final_yaw > 170.0f)   final_yaw = 170.0f;
+    // Yaw 축 (CH2)
+    if (final_yaw < SERVO_CH2_MIN) final_yaw = (float)SERVO_CH2_MIN;
+    if (final_yaw > SERVO_CH2_MAX) final_yaw = (float)SERVO_CH2_MAX;
 
     // [CLI 모니터링] 기존 형식을 유지하되, 숫자 90 부분만 실제 init값으로 출력
     static uint32_t last_log_time = 0;
@@ -79,10 +118,15 @@ void gimbalSettingCamOffset(float x, float y) {
 
         // 원하신 대로 기존 CLI 포맷을 그대로 유지합니다.
         // R(초기값):현재IMU->최종목표(차이) | P(초기값):현재IMU+오프셋->최종목표(차이) | ...
+        // cliPrintf("R(%.1f):%.1f->%.1f(%.2f) | P(%.1f):%.1f+%.1f->%.1f(%.2f) | Y(%.1f):%.1f+%.1f->%.1f(%.2f)\r\n",
+        //           init_r, imu_roll, final_roll, diff_r,
+        //           init_p, imu_pitch, cam_offset_y, final_pitch, diff_p,
+        //           init_y, imu_yaw, cam_offset_x, final_yaw, diff_y);
+
         cliPrintf("R(%.1f):%.1f->%.1f(%.2f) | P(%.1f):%.1f+%.1f->%.1f(%.2f) | Y(%.1f):%.1f+%.1f->%.1f(%.2f)\r\n",
                   init_r, imu_roll, final_roll, diff_r,
-                  init_p, imu_pitch, cam_offset_y, final_pitch, diff_p,
-                  init_y, imu_yaw, cam_offset_x, final_yaw, diff_y);
+                  init_p, imu_pitch, accum_cam_offset_y, final_pitch, diff_p,
+                  init_y, imu_yaw, accum_cam_offset_x, final_yaw, diff_y);
 
         // 현재 값을 다음 비교를 위해 저장
         last_final_roll = final_roll;
@@ -103,8 +147,11 @@ void gimbalSettingCamOffset(float x, float y) {
  * @brief 짐벌을 초기 정면 위치로 복귀
  */
 void gimbalReturnHome(void) {
-    cam_offset_x = 0.0f;
-    cam_offset_y = 0.0f;
+    // cam_offset_x = 0.0f;
+    // cam_offset_y = 0.0f;
+    accum_cam_offset_x = 0.0f; // 누적값 초기화
+    accum_cam_offset_y = 0.0f;
+
     // servo.c의 설정값을 그대로 가져와서 복귀
     servoSetTarget(0, servoGetInitAngle(0), 0.1f);
     servoSetTarget(1, servoGetInitAngle(1), 0.1f);
@@ -118,3 +165,6 @@ float gimbalGetCurrentAngle(uint8_t ch) {
     if (ch >= 3) return 0.0f; // 예외 처리
     return servoGetCurrentAngle(ch);
 }
+
+
+
