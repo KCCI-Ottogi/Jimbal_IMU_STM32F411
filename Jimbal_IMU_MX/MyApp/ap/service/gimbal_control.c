@@ -16,14 +16,14 @@ static float cam_offset_y = 0.0f;
 void gimbalSettingIMU(float roll, float pitch, float yaw) {
     imu_roll = roll *-1 ;
     imu_pitch = pitch *-1;
-    imu_yaw = yaw *-1;
+    imu_yaw = 0; //yaw *-1;
 }
 
 /**
  * @brief 카메라 서비스(camera_service.c)가 호출하는 데이터 갱신 함수
  */
 void gimbalSettingCamOffset(float x, float y) {
-    cam_offset_x = x;
+    cam_offset_x = x *-1;
     cam_offset_y = y;
 }
 
@@ -91,9 +91,9 @@ void gimbalSettingCamOffset(float x, float y) {
     }
 
     // 5. 최종 목표 각도를 서보 드라이버에 전달
-    servoSetTarget(0, final_roll,  0.15f); // Roll 축
-    servoSetTarget(1, final_pitch, 0.15f); // Pitch 축
-    servoSetTarget(2, final_yaw,   0.15f); // Yaw 축
+    servoSetTarget(0, final_roll,  0.3f); // Roll 축
+    servoSetTarget(1, final_pitch, 0.3f); // Pitch 축
+    servoSetTarget(2, final_yaw,   0.3f); // Yaw 축
     
     // 6. 실제 보간 이동 실행
     servoSmoothUpdate();

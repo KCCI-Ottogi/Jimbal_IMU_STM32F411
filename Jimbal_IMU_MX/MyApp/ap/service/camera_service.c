@@ -112,6 +112,10 @@ static float filtered_pid_x = 0.0f;
 static float filtered_pid_y = 0.0f;
 
 void cameraServicePIDUpdate(void) {
+    static uint32_t last_print_tick = 0; // 로그 출력 타이밍 관리
+    uint32_t now = osKernelGetTickCount();
+
+
     // 1. 타겟 상실 시 처리
     if (!cam_data.is_detected) {
         error_x_sum = error_x_prev = 0.0f;
@@ -125,9 +129,12 @@ void cameraServicePIDUpdate(void) {
     }
 
     // 2. 기본 게인 및 오차 계산
-    float Kp = 0.15f;
-    float Ki = 0.005f;
-    float Kd = 0.02f;
+    // float Kp = 0.15f;
+    // float Ki = 0.005f;
+    // float Kd = 0.02f;
+    float Kp = 0.4f;  // 기존 0.25에서 대폭 상향
+    float Ki = 0.03f; // 누적 오차를 더 빨리 반영 (0.015 -> 0.03)
+    float Kd = 0.06f;  // 움직일 때 제동을 걸어 오버슈트 방지
 
     if (cam_data.area > 5000) {      
         Kp = 0.10f; Kd = 0.04f;
@@ -136,33 +143,33 @@ void cameraServicePIDUpdate(void) {
     }
 
     float err_x = (float)(80 - cam_data.x);
-    float err_y = (float)(cam_data.y - 60);
+    float err_y = (float)(60 - cam_data.y);
 
     // ---------------------------------------------------------
     // 🎯 [핵심 추가] 3. 데드존 (Deadzone) 설정
     // 오차가 ±3 픽셀 이내면 중앙으로 간주하여 진동 억제
     // ---------------------------------------------------------
-    if (fabsf(err_x) < 3.0f) {
-        err_x = 0.0f;
-        error_x_sum = 0.0f; // I항 누적으로 인한 흔들림 방지
-    }
-    if (fabsf(err_y) < 3.0f) {
-        err_y = 0.0f;
-        error_y_sum = 0.0f;
-    }
+    // if (fabsf(err_x) < 1.0f) {
+    //     err_x = 0.0f;
+    //     error_x_sum = 0.0f; // I항 누적으로 인한 흔들림 방지
+    // }
+    // if (fabsf(err_y) < 1.0f) {
+    //     err_y = 0.0f;
+    //     error_y_sum = 0.0f;
+    // }
 
     // 4. PID 계산 (X축)
     error_x_sum += err_x;
-    if (error_x_sum > 20.0f) error_x_sum = 20.0f;
-    if (error_x_sum < -20.0f) error_x_sum = -20.0f;
+    if (error_x_sum > 100.0f) error_x_sum = 100.0f;
+    if (error_x_sum < -100.0f) error_x_sum = -100.0f;
     float d_err_x = err_x - error_x_prev;
     float target_pid_x = (err_x * Kp) + (error_x_sum * Ki) + (d_err_x * Kd);
     error_x_prev = err_x;
 
     // 5. PID 계산 (Y축)
     error_y_sum += err_y;
-    if (error_y_sum > 20.0f) error_y_sum = 20.0f;
-    if (error_y_sum < -20.0f) error_y_sum = -20.0f;
+    if (error_y_sum > 100.0f) error_y_sum = 100.0f;
+    if (error_y_sum < -100.0f) error_y_sum = -100.0f;
     float d_err_y = err_y - error_y_prev;
     float target_pid_y = (err_y * Kp) + (error_y_sum * Ki) + (d_err_y * Kd);
     error_y_prev = err_y;
@@ -171,8 +178,17 @@ void cameraServicePIDUpdate(void) {
     // 🌊 [핵심 추가] 6. 저역 통과 필터 (LPF) 적용
     // 계산된 PID 값이 급격하게 튀는 것을 방지 (0.1이 반응성, 숫자가 작을수록 부드러움)
     // ---------------------------------------------------------
-    filtered_pid_x = (filtered_pid_x * 0.9f) + (target_pid_x * 0.1f);
-    filtered_pid_y = (filtered_pid_y * 0.9f) + (target_pid_y * 0.1f);
+    filtered_pid_x =target_pid_x; // (filtered_pid_x * 0.2f) + (target_pid_x * 0.8f);
+    filtered_pid_y =target_pid_y; // (filtered_pid_y * 0.2f) + (target_pid_y * 0.8f);
+
+    // ---------------------------------------------------------
+    // 🛠 [디버깅 로그 추가] 0.1초마다 현재 상태 출력
+    // ---------------------------------------------------------
+    if (now - last_print_tick > 100) {
+        cliPrintf("[CAM] Pos(%3d,%3d) | Err(%3.1f,%3.1f) | PID_Out(%3.2f,%3.2f)\r\n", 
+                  cam_data.x, cam_data.y, err_x, err_y, filtered_pid_x, filtered_pid_y);
+        last_print_tick = now;
+    }
 
     // 최종 보정된 값을 짐벌 오프셋으로 설정
     gimbalSettingCamOffset(filtered_pid_x, filtered_pid_y);
