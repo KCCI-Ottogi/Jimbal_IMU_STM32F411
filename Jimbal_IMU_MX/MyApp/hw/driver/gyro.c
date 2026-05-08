@@ -102,46 +102,46 @@ bool Gyro_Read(Gyro_Data_t *pData) {
     return true;
 }
 
-void IMU_ComputeAngles(Gyro_Data_t *imu, Mag_Data_t *mag, float dt) {
-    // 1. 가속도 센서로 Roll, Pitch 절대 각도 계산
-    // atan2f와 sqrtf는 STM32F411 하드웨어 부동소수점 연산기로 1클럭만에 처리됨
-    float accel_roll  = atan2f((float)imu->accel_y, (float)imu->accel_z) * RAD_TO_DEG;
-    float accel_pitch = atan2f(-(float)imu->accel_x, 
-                        sqrtf((float)imu->accel_y * imu->accel_y + (float)imu->accel_z * imu->accel_z)) * RAD_TO_DEG;
+// void IMU_ComputeAngles(Gyro_Data_t *imu, Mag_Data_t *mag, float dt) {
+//     // 1. 가속도 센서로 Roll, Pitch 절대 각도 계산
+//     // atan2f와 sqrtf는 STM32F411 하드웨어 부동소수점 연산기로 1클럭만에 처리됨
+//     float accel_roll  = atan2f((float)imu->accel_y, (float)imu->accel_z) * RAD_TO_DEG;
+//     float accel_pitch = atan2f(-(float)imu->accel_x, 
+//                         sqrtf((float)imu->accel_y * imu->accel_y + (float)imu->accel_z * imu->accel_z)) * RAD_TO_DEG;
 
-    // 2. 자이로 센서로 각속도(Degree per second) 계산
-    float gyro_rate_roll  = (float)imu->gyro_x / GYRO_SCALE;
-    float gyro_rate_pitch = (float)imu->gyro_y / GYRO_SCALE;
-    float gyro_rate_yaw   = (float)imu->gyro_z / GYRO_SCALE;
+//     // 2. 자이로 센서로 각속도(Degree per second) 계산
+//     float gyro_rate_roll  = (float)imu->gyro_x / GYRO_SCALE;
+//     float gyro_rate_pitch = (float)imu->gyro_y / GYRO_SCALE;
+//     float gyro_rate_yaw   = (float)imu->gyro_z / GYRO_SCALE;
 
-    // 3. 상호보완 필터 (Complementary Filter)
-    // 자이로의 빠른 반응성과 가속도의 절대적인 수평 기준을 섞음 (가장 빠르고 메모리가 적은 방법)
-    imu->roll  = ALPHA * (imu->roll + gyro_rate_roll * dt) + (1.0f - ALPHA) * accel_roll;
-    imu->pitch = ALPHA * (imu->pitch + gyro_rate_pitch * dt) + (1.0f - ALPHA) * accel_pitch;
+//     // 3. 상호보완 필터 (Complementary Filter)
+//     // 자이로의 빠른 반응성과 가속도의 절대적인 수평 기준을 섞음 (가장 빠르고 메모리가 적은 방법)
+//     imu->roll  = ALPHA * (imu->roll + gyro_rate_roll * dt) + (1.0f - ALPHA) * accel_roll;
+//     imu->pitch = ALPHA * (imu->pitch + gyro_rate_pitch * dt) + (1.0f - ALPHA) * accel_pitch;
 
-    // 4. 기울기 보상 지자기 (Tilt-Compensated Yaw) 계산
-    // 평평하지 않은 상태에서도 지자기 센서가 정확한 북쪽을 가리키게 보정
-    float roll_rad  = imu->roll * DEG_TO_RAD;
-    float pitch_rad = imu->pitch * DEG_TO_RAD;
+//     // 4. 기울기 보상 지자기 (Tilt-Compensated Yaw) 계산
+//     // 평평하지 않은 상태에서도 지자기 센서가 정확한 북쪽을 가리키게 보정
+//     float roll_rad  = imu->roll * DEG_TO_RAD;
+//     float pitch_rad = imu->pitch * DEG_TO_RAD;
 
-    float cos_r = cosf(roll_rad);
-    float sin_r = sinf(roll_rad);
-    float cos_p = cosf(pitch_rad);
-    float sin_p = sinf(pitch_rad);
+//     float cos_r = cosf(roll_rad);
+//     float sin_r = sinf(roll_rad);
+//     float cos_p = cosf(pitch_rad);
+//     float sin_p = sinf(pitch_rad);
 
-    // HMC5883L 데이터 변환 (자기장 보정)
-    float mag_x = (float)mag->mag_x;
-    float mag_y = (float)mag->mag_y;
-    float mag_z = (float)mag->mag_z;
+//     // HMC5883L 데이터 변환 (자기장 보정)
+//     float mag_x = (float)mag->mag_x;
+//     float mag_y = (float)mag->mag_y;
+//     float mag_z = (float)mag->mag_z;
 
-    float mag_x_comp = mag_x * cos_p + mag_z * sin_p;
-    float mag_y_comp = mag_x * sin_r * sin_p + mag_y * cos_r - mag_z * sin_r * cos_p;
+//     float mag_x_comp = mag_x * cos_p + mag_z * sin_p;
+//     float mag_y_comp = mag_x * sin_r * sin_p + mag_y * cos_r - mag_z * sin_r * cos_p;
 
-    // 최종 Yaw(방위각) 계산 (0~360도 또는 -180~180도)
-    float yaw_raw = atan2f(-mag_y_comp, mag_x_comp) * RAD_TO_DEG;
+//     // 최종 Yaw(방위각) 계산 (0~360도 또는 -180~180도)
+//     float yaw_raw = atan2f(-mag_y_comp, mag_x_comp) * RAD_TO_DEG;
     
-    // (선택) Yaw 값에도 약간의 자이로를 섞어주면 흔들림(노이즈)이 줄어듭니다.
-    // imu->yaw = 0.90f * (imu->yaw + gyro_rate_yaw * dt) + 0.10f * yaw_raw;
-    imu->yaw =  yaw_raw + 180.0f; // 
+//     // (선택) Yaw 값에도 약간의 자이로를 섞어주면 흔들림(노이즈)이 줄어듭니다.
+//     // imu->yaw = 0.90f * (imu->yaw + gyro_rate_yaw * dt) + 0.10f * yaw_raw;
+//     imu->yaw =  yaw_raw; //+ 180.0f; // 
 
-}
+// }

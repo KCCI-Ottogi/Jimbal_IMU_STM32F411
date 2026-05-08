@@ -8,6 +8,14 @@
 #include <stdbool.h>
 #include "mag.h" // 지자기 데이터 구조체를 쓰기 위해 인클루드
 
+#ifndef RAD_TO_DEG
+#define RAD_TO_DEG 57.29577951f
+#endif
+#ifndef GYRO_SCALE
+#define GYRO_SCALE 131.0f
+#endif
+
+
 // IMU 데이터 및 계산된 각도 저장 구조체
 typedef struct {
     // raw 데이터
