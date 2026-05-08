@@ -3,6 +3,9 @@
 #define __CAMERA_SERVICE_H__
 
 #include "hw_def.h"
+#include "gimbal_control.h" // 보정치 전달을 위해 추가 (servo.h는 제거 가능)
+
+
 
 // 카메라 데이터를 담는 구조체
 typedef struct {
@@ -18,6 +21,10 @@ typedef struct {
 void cameraServiceInit(void);
 
 
+/**
+ * @brief 최신 파싱된 카메라 데이터 주소 반환
+ */
+camera_data_t* cameraGetLatestData(void);
 
 /**
  * @brief UART로부터 9바이트 패킷을 수신하고 즉시 PID 기반 짐벌 제어를 수행
@@ -27,9 +34,5 @@ void cameraDataParsing(void);
 
 void cameraServicePIDUpdate(void);
 
-/**
- * @brief 최신 파싱된 카메라 데이터 주소 반환
- */
-camera_data_t* cameraGetLatestData(void);
 
 #endif /* __CAMERA_SERVICE_H__ */

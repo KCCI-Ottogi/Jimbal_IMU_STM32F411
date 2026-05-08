@@ -1,6 +1,4 @@
 #include "gimbal_control.h"
-#include "servo.h"
-#include <math.h>
 
 /* --- 내부 정적 변수 (데이터 저장소) --- */
 // 자이로 서비스로부터 받는 기체 각도

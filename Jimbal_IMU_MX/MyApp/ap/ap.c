@@ -18,12 +18,8 @@ static bool is_mag_ok = false;
 
 
 void cliServo(uint8_t argc, char **argv) {
-    // 1. 명령어 처리에 성공했는지 추적할 변수 (선택 사항, 여기선 조기 반환 사용)
-    
-    // 2. 인자가 아예 없는 경우 (servo만 입력)
     if (argc >= 2) {
         
-        // --- [기존 명령어] ---
         if (strcmp(argv[1], "total") == 0) {
             servoTotalTest();
             return; // 성공 시 즉시 종료
@@ -53,7 +49,6 @@ void cliServo(uint8_t argc, char **argv) {
             return;
         }
 
-        // --- [새로 추가한 명령어] ---
         if (strcmp(argv[1], "sync") == 0 && argc == 6) {
             float a0 = (float)atof(argv[2]);
             float a1 = (float)atof(argv[3]);
@@ -77,8 +72,7 @@ void cliServo(uint8_t argc, char **argv) {
         }
     }
 
-    // 3. 여기까지 내려왔다는 것은? 
-    // 인자가 부족했거나(argc < 2), 위 if문 조건(명령어 오타, 인자 개수 틀림)에 하나도 안 걸렸다는 뜻입니다.
+    // 3. 인자가 부족했거나(argc < 2), 위 if문 조건(명령어 오타, 인자 개수 틀림)에 하나도 안 걸렸다는 뜻입니다.
     cliPrintf("\r\n[Invalid Command or Arguments]\r\n");
     cliPrintf("Usage:\r\n");
     cliPrintf("  servo total\r\n");
@@ -114,31 +108,6 @@ void cliButton(uint8_t argc, char **argv)
 // ==========================================
 // CLI Commands
 // ==========================================
-// void cliImu(uint8_t argc, char **argv) {
-//   if (argc >= 2) {
-//     if (strcmp(argv[1], "on") == 0) {
-//       uint32_t period = (argc == 3) ? atoi(argv[2]) : 500; 
-//       if(!isMonitoringOn() && period < 100) period = 100;
-      
-//       // ★ 복구 로직: "imu on"을 입력할 때마다 하드웨어 초기화 재시도
-//       cliPrintf("Re-initializing I2C & Sensors...\r\n");
-//       // MX_I2C1_Init; // I2C 버스 복구 및 활성화
-//       is_gyro_ok = Gyro_Init(); 
-//       if(!is_gyro_ok) {
-//           cliPrintf("ERROR: Sensor Init Failed. Check Wires.\r\n");
-//           return; // 선이 아직 안 꽂혀있으면 실행 중지
-//       }
-//       // 성공하면 계속 진행
-//       Gyro_StartAuto(); 
-//       imu_report_period = period;
-//       cliPrintf("IMU Report : ON (%d ms)\r\n", imu_report_period);
-//     } else if (strcmp(argv[1], "off") == 0) {
-//       imu_report_period = 0;
-//       Gyro_StopAuto();
-//       cliPrintf("IMU Report : OFF\r\n");
-//     }
-//   }
-// }
 void cliImu(uint8_t argc, char **argv) {
   if (argc >= 2) {
     if (strcmp(argv[1], "on") == 0) {
@@ -428,70 +397,18 @@ void gimbalSystemTask(void *argument)
 {
     LOG_INF("Gimbal System Task Started!");
 
-    // uint32_t last_print_tick = 0; // 출력 시간 계산용
 
     cameraServiceInit();   // 카메라 PID 변수(sum, prev) 초기화
 
     while (1) {
-
-
-        // --------
-        // 1. 서보 모터를 목표 각도로 부드럽게 제어 (10ms 주기 업데이트)
-        // 위 gyroSystemTask에서 들어온 타겟을 향해 모터가 움직입니다.
-        // gimbalTaskLoop();
-
-        // /* 3. 짐벌 위치(각도) CLI 출력 로직 (멀티태스킹 최적화) */
-        // if (gimbal_report_period > 0) {
-        //     uint32_t now = osKernelGetTickCount();
-        //     if (now - last_print_tick >= gimbal_report_period) {
-        //         last_print_tick = now;
-                
-        //         // getter 함수로 현재 서보 각도를 가져옴
-        //         float r_angle = gimbalGetCurrentAngle(0);
-        //         float p_angle = gimbalGetCurrentAngle(1);
-        //         float y_angle = gimbalGetCurrentAngle(2);
-
-                
-
-        //         if (!isMonitoringOn()) {
-        //             cliPrintf("GIMBAL [Roll(0): %3d | Pitch(1): %3d | Yaw(2): %3d]\r\n", 
-        //                       (int)r_angle, (int)p_angle, (int)y_angle);
-        //         }
-        //     }
-        // }
-
-        ///////////////////////////////////////////////////
-
-        // 1. 자이로 업데이트 (읽기 + 보고 + 출력까지 내부에서 처리)
-        // gyroServiceUpdate();
-
-        // 2. 카메라 업데이트 (파싱 + PID 계산 + 보고)
+        // 카메라 업데이트 (파싱 + PID 계산 + 보고)
         cameraDataParsing();
         cameraServicePIDUpdate();
 
-        // 3. 통합 제어 (데이터 합산 및 서보 구동)
+        // 통합 제어 (데이터 합산 및 서보 구동)
         gimbalExecuteCombinedControl();
 
-        // if (gimbal_report_period > 0) {
-        //     uint32_t now = osKernelGetTickCount();
-        //     if (now - last_print_tick >= gimbal_report_period) {
-        //         last_print_tick = now;
-                
-        //         // getter 함수로 현재 서보 각도를 가져옴
-        //         float r_angle = gimbalGetCurrentAngle(0);
-        //         float p_angle = gimbalGetCurrentAngle(1);
-        //         float y_angle = gimbalGetCurrentAngle(2);
-
-                
-
-        //         if (!isMonitoringOn()) {
-        //             cliPrintf("GIMBAL [Roll(0): %3d | Pitch(1): %3d | Yaw(2): %3d]\r\n", 
-        //                       (int)r_angle, (int)p_angle, (int)y_angle);
-        //         }
-        //     }
-        // }
-
-        osDelay(10); // 100Hz
+        osDelay(100); // 100Hz
     }
 }
 
@@ -551,54 +468,6 @@ void monitorSystemTask(void *argument){
 
 }
 
-// static Mag_Data_t current_magData;
-// void gyroSystemTask(void *argument) {
-//   Gyro_Data_t gyroData = {0}; // 구조체 초기화
-//   uint32_t last_print_tick = 0;
-//   uint32_t last_calc_tick = osKernelGetTickCount();
-
-//   while (1) {
-//     if (is_gyro_ok && GyroReadySemHandle != NULL) {
-//       if (osSemaphoreAcquire(GyroReadySemHandle, osWaitForever) == osOK) {
-//         // 읽기 실패 시 복구 대기 상태로 전환
-//         if (!Gyro_Read(&gyroData)) {
-//             is_gyro_ok = false;
-//             cliPrintf("\r\n[ALARM] Sensor Disconnected! Type 'imu off' then 'imu on' to recover.\r\n");
-//             continue; 
-//         }
-//         else if (Gyro_Read(&gyroData)) {
-          
-//           // 1. 시간 간격(dt) 계산
-//           uint32_t now = osKernelGetTickCount();
-//           float dt = (now - last_calc_tick) / 1000.0f; // 밀리초를 초(Second)로 변환
-//           last_calc_tick = now;
-
-//           // 2. 센서 융합 및 각도 계산 (가속도 + 자이로 + 지자기)
-//           IMU_ComputeAngles(&gyroData, &current_magData, dt);
-//           gimbalUpdateFromIMU(gyroData.roll, gyroData.pitch, gyroData.yaw);
-          
-//           // 3. 주기적 출력 제어
-//           if (imu_report_period > 0 && (now - last_print_tick >= imu_report_period)) {
-//             last_print_tick = now;
-
-//             if (!isMonitoringOn()) {
-//               // CLI에 위치 각도 출력 (소수점 1자리까지만 출력하여 가독성 및 속도 확보)
-//               cliPrintf("Angle [Roll: %6.1f | Pitch: %6.1f | Yaw: %6.1f]\r\n", 
-//                         gyroData.roll, gyroData.pitch, gyroData.yaw);
-//             } else {
-//               // Monitor 패킷으로 보낼 때는 실수(float) 그대로 전송
-//               monitorUpdateValue(ID_IMU_GYRO_X, TYPE_FLOAT, &gyroData.roll);
-//               monitorUpdateValue(ID_IMU_GYRO_Y, TYPE_FLOAT, &gyroData.pitch);
-//               monitorUpdateValue(ID_IMU_GYRO_Z, TYPE_FLOAT, &gyroData.yaw);
-//             }
-//           }
-//         }
-//       }
-//     } else {
-//       osDelay(100); 
-//     }
-//   }
-// }
 void gyroSystemTask(void *argument) {
   while (1) {
     // 변수 직접 접근 대신 Getter 함수 사용
@@ -611,18 +480,6 @@ void gyroSystemTask(void *argument) {
 }
 
 
-// static Mag_Data_t current_magData; // 지자기 데이터 저장용
-// void magSystemTask(void *argument) {
-//   while (1) {
-//     if (is_mag_ok && imu_report_period > 0) {
-//       // 읽은 지자기 데이터를 전역 구조체에 업데이트 (gyroSystemTask에서 가져다 쓰기 위함)
-//       Mag_Read(&current_magData); 
-//       osDelay(imu_report_period); 
-//     } else {
-//       osDelay(100);
-//     }
-//   }
-// }
 void magSystemTask(void *argument) {
     Mag_Data_t magData; // 지역 변수로 선언
 

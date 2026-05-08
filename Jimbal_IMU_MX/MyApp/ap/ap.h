@@ -1,17 +1,13 @@
 #ifndef __AP_AP_H_
 #define __AP_AP_H_  
 
-#include "def.h"
-#include "hw_def.h"
-#include "bsp.h"
-#include "hw.h"
-#include "monitor.h"//없어도 될 수도
-#include "cli.h"
-#
-// #include "servo.h" // 추가
+// #include "def.h"
+// #include "hw_def.h"
+// #include "bsp.h"
+// #include "hw.h"
+
+// #include "gimbal_control.h"//없어도 됨
 #include "gyro_service.h"
-#include "gimbal_control.h"
-#include "camera_service.h"
 
 void apInit(void);
 void apMain(void);

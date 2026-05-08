@@ -3,6 +3,8 @@
 
 #include "hw_def.h"
 #include "servo.h"          // servoSetTarget, servoGetCurrentAngle 정의 포함
+
+
 // 짐벌 제어 채널 정의
 #define GIMBAL_CH_ROLL   0
 #define GIMBAL_CH_PITCH  1
