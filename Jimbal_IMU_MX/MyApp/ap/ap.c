@@ -40,34 +40,63 @@ void cliServo(uint8_t argc, char **argv) {
             return;
         }
 
+        // if (strcmp(argv[1], "smooth") == 0 && argc == 5) {
+        //     uint8_t ch = (uint8_t)atoi(argv[2]);
+        //     float angle = (float)atof(argv[3]);
+        //     float k = (float)atof(argv[4]);
+        //     servoSetTarget(ch, angle, k);
+        //     cliPrintf("Servo %d: Target %.1f, k %.2f\r\n", ch, angle, k);
+        //     return;
+        // }
+
+        // if (strcmp(argv[1], "sync") == 0 && argc == 6) {
+        //     float a0 = (float)atof(argv[2]);
+        //     float a1 = (float)atof(argv[3]);
+        //     float a2 = (float)atof(argv[4]);
+        //     float k  = (float)atof(argv[5]);
+        //     servoSetTargetAll(a0, a1, a2, k);
+        //     cliPrintf("Sync Target Set\r\n");
+        //     return;
+        // }
+
+        // if (strcmp(argv[1], "sweep") == 0 && argc == 4) {
+        //     uint8_t ch = (uint8_t)atoi(argv[2]);
+        //     if (ch > 2) {
+        //         cliPrintf("Error: Invalid Channel %d\r\n", ch);
+        //         return; // 잘못된 채널이면 Usage를 보여주는 대신 에러 메시지 후 종료하는 게 명확할 때가 많습니다.
+        //     }
+        //     float k = (float)atof(argv[3]);
+        //     servoSweep(ch, k);
+        //     cliPrintf("CH %d Sweep\r\n", ch);
+        //     return;
+        // }
+
         if (strcmp(argv[1], "smooth") == 0 && argc == 5) {
-            uint8_t ch = (uint8_t)atoi(argv[2]);
-            float angle = (float)atof(argv[3]);
-            float k = (float)atof(argv[4]);
-            servoSetTarget(ch, angle, k);
-            cliPrintf("Servo %d: Target %.1f, k %.2f\r\n", ch, angle, k);
+            // 1. 셋팅 (이미 있는 함수 활용)
+            servoSetTarget((uint8_t)atoi(argv[2]), (float)atof(argv[3]), (float)atof(argv[4]));
+            
+            // 2. 셋팅된 대로 돌리기
+            servoRunToTarget((uint8_t)atoi(argv[2]));
             return;
         }
 
         if (strcmp(argv[1], "sync") == 0 && argc == 6) {
-            float a0 = (float)atof(argv[2]);
-            float a1 = (float)atof(argv[3]);
-            float a2 = (float)atof(argv[4]);
-            float k  = (float)atof(argv[5]);
-            servoSetTargetAll(a0, a1, a2, k);
-            cliPrintf("Sync Target Set\r\n");
+            // 1. 셋팅
+            servoSetTargetAll((float)atof(argv[2]), (float)atof(argv[3]), (float)atof(argv[4]), (float)atof(argv[5]));
+            
+            // 2. 셋팅된 대로 돌리기 (3개 채널)
+            for(int i=0; i<3; i++) {
+                servoRunToTarget(i); 
+            }
             return;
         }
 
         if (strcmp(argv[1], "sweep") == 0 && argc == 4) {
-            uint8_t ch = (uint8_t)atoi(argv[2]);
-            if (ch > 2) {
-                cliPrintf("Error: Invalid Channel %d\r\n", ch);
-                return; // 잘못된 채널이면 Usage를 보여주는 대신 에러 메시지 후 종료하는 게 명확할 때가 많습니다.
-            }
-            float k = (float)atof(argv[3]);
-            servoSweep(ch, k);
-            cliPrintf("CH %d Sweep\r\n", ch);
+            // 1. 셋팅 (servoSweep이 알아서 반대편 타겟을 셋팅함)
+            servoSweep((uint8_t)atoi(argv[2]), (float)atof(argv[3]));
+            
+            // 2. 셋팅된 대로 돌리기
+            servoRunToTarget((uint8_t)atoi(argv[2]));
             return;
         }
     }
@@ -558,6 +587,9 @@ void apInit(void)
 
   
   servoInit();
+  // 모터가 90도까지 '물리적으로' 이동할 시간
+  osDelay(1500);
+
 
   monitorSetSyncHandler(apSyncPeriods);
   cliSetCtrlCHandler(apStopAutoTask);

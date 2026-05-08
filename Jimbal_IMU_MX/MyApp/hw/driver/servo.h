@@ -28,9 +28,11 @@ void servoSweep(uint8_t ch, float k);
 void servoSetTarget(uint8_t ch, float target, float k);
 void servoSetTargetAll(float target0, float target1, float target2, float k);
 
+void servoRunToTarget(uint8_t ch);
+
 float servoGetCurrentAngle(uint8_t ch);
 float servoGetTargetAngle(uint8_t ch);
 float servoGetK(uint8_t ch);
 void servoSetCurrentAngle(uint8_t ch, float angle);
-
+float servoGetInitAngle(uint8_t ch) ;
 #endif
