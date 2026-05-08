@@ -37,7 +37,7 @@ void gimbalSettingCamOffset(float x, float y) {
 
     // 1. IMU 기반 수평 유지 각도 계산 (Base)
     float base_roll  = 90.0f - imu_roll;
-    float base_pitch = 90.0f + imu_pitch;
+    float base_pitch = 90.0f - imu_pitch;
     float base_yaw   = 90.0f; // 기본 정면
 
     // 2. 카메라 PID 보정치 합산 (Base + Offset)
