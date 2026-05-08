@@ -15,8 +15,8 @@ static float cam_offset_y = 0.0f;
  */
 void gimbalSettingIMU(float roll, float pitch, float yaw) {
     imu_roll = roll *-1 ;
-    imu_pitch = roll *-1;
-    imu_yaw = roll *-1;
+    imu_pitch = pitch *-1;
+    imu_yaw = yaw *-1;
 }
 
 /**
