@@ -588,7 +588,7 @@ void apInit(void)
   
   servoInit();
   // 모터가 90도까지 '물리적으로' 이동할 시간
-  osDelay(1500);
+  // osDelay(1500);
 
 
   monitorSetSyncHandler(apSyncPeriods);
