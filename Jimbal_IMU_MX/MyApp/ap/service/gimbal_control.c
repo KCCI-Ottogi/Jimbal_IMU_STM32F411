@@ -29,16 +29,18 @@ void gimbalSettingCamOffset(float x, float y) {
 
 /**
  * @brief [통합 제어부] ap.c에서 주기적으로 호출하여 서보에 최종 명령을 내림
- */
-void gimbalExecuteCombinedControl(void) {
+ */void gimbalExecuteCombinedControl(void) {
+    // 이전 목표 각도를 저장하기 위한 정적 변수 (차이값 계산용)
+    static float last_final_roll = 90.0f;
+    static float last_final_pitch = 90.0f;
+    static float last_final_yaw = 90.0f;
+
     // 1. IMU 기반 수평 유지 각도 계산 (Base)
-    // 기체가 +10도 기울면 서보는 90-10=80도로 움직여 수평 유지
     float base_roll  = 90.0f - imu_roll;
     float base_pitch = 90.0f + imu_pitch;
     float base_yaw   = 90.0f; // 기본 정면
 
     // 2. 카메라 PID 보정치 합산 (Base + Offset)
-    // 자이로 값이 0이면(센서 없음) 90도 정면 기준으로 카메라 추적만 동작함
     float final_roll  = base_roll;
     float final_pitch = base_pitch + cam_offset_y;
     float final_yaw   = base_yaw + cam_offset_x;
@@ -53,8 +55,27 @@ void gimbalExecuteCombinedControl(void) {
     if (final_yaw < 10.0f)    final_yaw = 10.0f;
     if (final_yaw > 170.0f)   final_yaw = 170.0f;
 
+    // [CLI 모니터링 추가] 0.1초마다 한 줄로 출력
+    static uint32_t last_log_time = 0;
+    if (osKernelGetTickCount() - last_log_time >= 100) {
+        last_log_time = osKernelGetTickCount();
+
+        float diff_r = final_roll - last_final_roll;
+        float diff_p = final_pitch - last_final_pitch;
+        float diff_y = final_yaw - last_final_yaw;
+
+        cliPrintf("R:%.1f->%.1f(%.2f) | P:%.1f+%.1f->%.1f(%.2f) | Y:90+%.1f->%.1f(%.2f)\r\n",
+                  imu_roll, final_roll, diff_r,
+                  imu_pitch, cam_offset_y, final_pitch, diff_p,
+                  cam_offset_x, final_yaw, diff_y);
+
+        // 현재 값을 다음 비교를 위해 저장
+        last_final_roll = final_roll;
+        last_final_pitch = final_pitch;
+        last_final_yaw = final_yaw;
+    }
+
     // 4. 최종 목표 각도를 서보 드라이버에 전달
-    // 응답성을 위해 k값은 0.15f 정도로 설정
     servoSetTarget(0, final_roll,  0.15f); // Roll 축
     servoSetTarget(1, final_pitch, 0.15f); // Pitch 축
     servoSetTarget(2, final_yaw,   0.15f); // Yaw 축
