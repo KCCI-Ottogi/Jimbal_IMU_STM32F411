@@ -67,41 +67,113 @@ void cameraDataParsing(void) {
 }
 
 
+// void cameraServicePIDUpdate(void) {
+//     if (!cam_data.is_detected) {
+//         // 물체를 놓치면 급격한 회전을 방지하기 위해 누적 데이터 초기화[cite: 5]
+//         error_x_sum = error_x_prev = error_y_sum = error_y_prev = 0.0f;
+//         return;
+//     }
+
+//     // 기본 게인 설정 
+//     float Kp = 0.15f;
+//     float Ki = 0.005f; // 잔류 오차 제거용[cite: 5]
+//     float Kd = 0.02f;  // 진동 억제(브레이크)용
+
+//     // 면적이 크면(가까우면) 부드럽게, 작으면(멀면) 민감하게 반응
+//     if (cam_data.area > 5000) {      
+//         Kp = 0.10f; Kd = 0.04f; // 가까울 때: 감도 낮추고 브레이크 강화
+//     } else if (cam_data.area < 500) { 
+//         Kp = 0.22f; Ki = 0.008f; // 멀 때: 감도 높이고 끈기 있게 추적
+//     }
+
+//     float err_x = (float)(80 - cam_data.x);
+//     float err_y = (float)(cam_data.y - 60);
+
+//     error_x_sum += err_x;
+//     if (error_x_sum > 20.0f) error_x_sum = 20.0f;   // Anti-windup (한계 설정)
+//     if (error_x_sum < -20.0f) error_x_sum = -20.0f;
+//     float d_err_x = err_x - error_x_prev;
+//     float pid_x = (err_x * Kp) + (error_x_sum * Ki) + (d_err_x * Kd);
+//     error_x_prev = err_x;
+
+//     error_y_sum += err_y;
+//     if (error_y_sum > 20.0f) error_y_sum = 20.0f;
+//     if (error_y_sum < -20.0f) error_y_sum = -20.0f;
+//     float d_err_y = err_y - error_y_prev;
+//     float pid_y = (err_y * Kp) + (error_y_sum * Ki) + (d_err_y * Kd);
+//     error_y_prev = err_y;
+
+//     gimbalSettingCamOffset(pid_x, pid_y);
+// }
+
+
+// 상단에 필터링된 결과값을 유지하기 위한 정적 변수 추가
+static float filtered_pid_x = 0.0f;
+static float filtered_pid_y = 0.0f;
+
 void cameraServicePIDUpdate(void) {
+    // 1. 타겟 상실 시 처리
     if (!cam_data.is_detected) {
-        // 물체를 놓치면 급격한 회전을 방지하기 위해 누적 데이터 초기화[cite: 5]
-        error_x_sum = error_x_prev = error_y_sum = error_y_prev = 0.0f;
+        error_x_sum = error_x_prev = 0.0f;
+        error_y_sum = error_y_prev = 0.0f;
+        
+        // 타겟이 없으면 보정치를 서서히 0으로 되돌림 (스르륵 복귀)
+        filtered_pid_x *= 0.9f; 
+        filtered_pid_y *= 0.9f;
+        gimbalSettingCamOffset(filtered_pid_x, filtered_pid_y);
         return;
     }
 
-    // 기본 게인 설정 
+    // 2. 기본 게인 및 오차 계산
     float Kp = 0.15f;
-    float Ki = 0.005f; // 잔류 오차 제거용[cite: 5]
-    float Kd = 0.02f;  // 진동 억제(브레이크)용
+    float Ki = 0.005f;
+    float Kd = 0.02f;
 
-    // 면적이 크면(가까우면) 부드럽게, 작으면(멀면) 민감하게 반응
     if (cam_data.area > 5000) {      
-        Kp = 0.10f; Kd = 0.04f; // 가까울 때: 감도 낮추고 브레이크 강화
+        Kp = 0.10f; Kd = 0.04f;
     } else if (cam_data.area < 500) { 
-        Kp = 0.22f; Ki = 0.008f; // 멀 때: 감도 높이고 끈기 있게 추적
+        Kp = 0.22f; Ki = 0.008f;
     }
 
     float err_x = (float)(80 - cam_data.x);
     float err_y = (float)(cam_data.y - 60);
 
+    // ---------------------------------------------------------
+    // 🎯 [핵심 추가] 3. 데드존 (Deadzone) 설정
+    // 오차가 ±3 픽셀 이내면 중앙으로 간주하여 진동 억제
+    // ---------------------------------------------------------
+    if (fabsf(err_x) < 3.0f) {
+        err_x = 0.0f;
+        error_x_sum = 0.0f; // I항 누적으로 인한 흔들림 방지
+    }
+    if (fabsf(err_y) < 3.0f) {
+        err_y = 0.0f;
+        error_y_sum = 0.0f;
+    }
+
+    // 4. PID 계산 (X축)
     error_x_sum += err_x;
-    if (error_x_sum > 20.0f) error_x_sum = 20.0f;   // Anti-windup (한계 설정)
+    if (error_x_sum > 20.0f) error_x_sum = 20.0f;
     if (error_x_sum < -20.0f) error_x_sum = -20.0f;
     float d_err_x = err_x - error_x_prev;
-    float pid_x = (err_x * Kp) + (error_x_sum * Ki) + (d_err_x * Kd);
+    float target_pid_x = (err_x * Kp) + (error_x_sum * Ki) + (d_err_x * Kd);
     error_x_prev = err_x;
 
+    // 5. PID 계산 (Y축)
     error_y_sum += err_y;
     if (error_y_sum > 20.0f) error_y_sum = 20.0f;
     if (error_y_sum < -20.0f) error_y_sum = -20.0f;
     float d_err_y = err_y - error_y_prev;
-    float pid_y = (err_y * Kp) + (error_y_sum * Ki) + (d_err_y * Kd);
+    float target_pid_y = (err_y * Kp) + (error_y_sum * Ki) + (d_err_y * Kd);
     error_y_prev = err_y;
 
-    gimbalSettingCamOffset(pid_x, pid_y);
+    // ---------------------------------------------------------
+    // 🌊 [핵심 추가] 6. 저역 통과 필터 (LPF) 적용
+    // 계산된 PID 값이 급격하게 튀는 것을 방지 (0.1이 반응성, 숫자가 작을수록 부드러움)
+    // ---------------------------------------------------------
+    filtered_pid_x = (filtered_pid_x * 0.9f) + (target_pid_x * 0.1f);
+    filtered_pid_y = (filtered_pid_y * 0.9f) + (target_pid_y * 0.1f);
+
+    // 최종 보정된 값을 짐벌 오프셋으로 설정
+    gimbalSettingCamOffset(filtered_pid_x, filtered_pid_y);
 }
