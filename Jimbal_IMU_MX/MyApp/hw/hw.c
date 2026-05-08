@@ -1,21 +1,12 @@
-//#include "driver/uart.h"
-
-// #include "hw_def.h"
 #include "hw.h"
 
 void hwInit(void)
 {
-    ledInit();//보류
+    // 통신 및 모터 초기화
     uartInit();
-    cliInit();
-    // buttonInit();//보류
-    // tempInit();//보류
-    // uartOpen(0, 9600);
-
-    // i2cInit();
-    // mpu6050Init();
-    servoInit(); 
+    servoInit();
     
-    logInit();
-
+    // 센서 초기화
+    Gyro_Init();
+    Mag_Init();
 }

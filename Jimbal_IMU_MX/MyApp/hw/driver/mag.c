@@ -11,7 +11,7 @@ bool Mag_Init(void) {
     uint8_t data = 0x70; // 8-average, 15Hz
     if (HAL_I2C_Mem_Write(&hi2c1, HMC5883L_ADDR, 0x00, 1, &data, 1, 100) != HAL_OK) return false;
     
-    data = 0x03; // 초기엔 Idle 모드 (전력소모 방지)
+    data = 0x00; // 처음부터 바로 Continuous(연속 측정) 모드로 시작!
     HAL_I2C_Mem_Write(&hi2c1, HMC5883L_ADDR, 0x02, 1, &data, 1, 100);
     return true;
 }
