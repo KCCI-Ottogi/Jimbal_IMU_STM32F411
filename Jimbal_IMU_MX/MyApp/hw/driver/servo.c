@@ -4,37 +4,44 @@
 
 extern TIM_HandleTypeDef htim2; // CubeMX에서 설정한 타이머 핸들러
 
-
-// 3축 상태 저장소
+// 3축 상태 저장소 (외부에서 직접 접근하지 못하도록 static 선언, Getter/Setter로만 접근)
 static servo_smooth_t servo_list[3];
 
 /**
- * @brief 서보 초기화: 지정된 초기값(110, 65, 70)으로 시작
+ * @brief 서보 초기화: 매크로 초기값을 구조체로 옮겨 담아 동적 제어 준비
  */
 void servoInit(void) {
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); 
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2); 
     HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3); 
 
-    float init_angles[3] = {SERVO_CH0_INIT, SERVO_CH1_INIT, SERVO_CH2_INIT};
+    // 하드웨어 설정값 매크로를 기반으로 초기 배열 생성
+    float inits[] = {SERVO_CH0_INIT, SERVO_CH1_INIT, SERVO_CH2_INIT};
+    float mins[]  = {SERVO_CH0_MIN,  SERVO_CH1_MIN,  SERVO_CH2_MIN};
+    float maxs[]  = {SERVO_CH0_MAX,  SERVO_CH1_MAX,  SERVO_CH2_MAX};
 
     for(int i=0; i<3; i++) {
-        servo_list[i].current_angle = init_angles[i];
-        servo_list[i].target_angle = init_angles[i];
-        servo_list[i].k = 0.1f; 
-        servoWrite(i, (uint8_t)init_angles[i]);
+        servo_list[i].min_angle     = mins[i];
+        servo_list[i].max_angle     = maxs[i];
+        servo_list[i].init_angle    = inits[i];
+        
+        servo_list[i].current_angle = inits[i];
+        servo_list[i].target_angle  = inits[i];
+        servo_list[i].k             = 0.1f; 
+        
+        servoWrite(i, (uint8_t)inits[i]);
     }
 }
 
 /**
- * @brief PWM 출력 및 임계치 보호
+ * @brief PWM 출력 및 동적 임계치 보호
  */
 void servoWrite(uint8_t ch, uint8_t angle) {
-    uint8_t max_limit = 180;
-    if (ch == 1) max_limit = SERVO_CH1_MAX;
+    if (ch > 2) return;
 
-    if (angle > max_limit) angle = max_limit;
-    if (angle < 0) angle = 0;
+    // 구조체에 저장된 min/max 값을 참조하여 하드웨어 보호
+    if (angle > servo_list[ch].max_angle) angle = (uint8_t)servo_list[ch].max_angle;
+    if (angle < servo_list[ch].min_angle) angle = (uint8_t)servo_list[ch].min_angle;
 
     uint32_t pulse_value = 500 + (angle * (2500 - 500) / 180);
 
@@ -44,30 +51,26 @@ void servoWrite(uint8_t ch, uint8_t angle) {
 }
 
 /**
- * @brief [수정] 스캔 후 90도가 아닌 '초기값'으로 복귀
+ * @brief 채널별 동적 Min~Max 범위를 스캔 후 동적 Init(Home) 위치로 복귀
  */
 void servoScan(uint8_t ch) {
+    if (ch > 2) return;
     cliPrintf("Starting Scan for Channel %d...\r\n", ch);
-    uint8_t max_l = (ch == 1) ? SERVO_CH1_MAX : 180;
 
-    for (int i = 0; i <= max_l; i += 5) {
-        servoWrite(ch, i);
+    // 구조체 범위 참조
+    for (int i = (int)servo_list[ch].min_angle; i <= (int)servo_list[ch].max_angle; i += 5) {
+        servoWrite(ch, (uint8_t)i);
         cliPrintf("CH %d - Current Angle: %d\r\n", ch, i);
         HAL_Delay(100);
     }
     
-    // 복귀 시 채널별 초기값 사용
-    float return_angle = SERVO_CH0_INIT;
-    if(ch == 1) return_angle = SERVO_CH1_INIT;
-    else if(ch == 2) return_angle = SERVO_CH2_INIT;
-
     HAL_Delay(500);
-    servoWrite(ch, (uint8_t)return_angle);
-    cliPrintf("Scan Complete. Returned to Init Position (%.1f).\r\n", return_angle);
+    servoWrite(ch, (uint8_t)servo_list[ch].init_angle);
+    cliPrintf("Scan Complete. Returned to Init Position (%.1f).\r\n", servo_list[ch].init_angle);
 }
 
 /**
- * @brief [수정] 듀얼 테스트 후 초기값으로 복귀
+ * @brief 듀얼 테스트 후 구조체 Init 값으로 복귀
  */
 void servoDualTest(void) {
     cliPrintf("Dual Servo Sync Test Start...\r\n");
@@ -79,21 +82,22 @@ void servoDualTest(void) {
         HAL_Delay(15); 
     }
 
-    // 초기값으로 복귀
-    servoWrite(1, (uint8_t)SERVO_CH1_INIT);
-    servoWrite(2, (uint8_t)SERVO_CH2_INIT);
+    // 구조체의 초기값으로 복귀
+    servoWrite(1, (uint8_t)servo_list[1].init_angle);
+    servoWrite(2, (uint8_t)servo_list[2].init_angle);
     cliPrintf("Dual Test Done. Returned to Home.\r\n");
 }
 
 /**
- * @brief [수정] 전체 테스트 완료 후 초기값(110, 65, 70)으로 복귀
+ * @brief 전체 테스트 완료 후 구조체 Init 위치로 복귀
  */
 void servoTotalTest(void) {
     cliPrintf("======= [Gimbal Full Range Test] =======\r\n");
 
     for (int i = 0; i <= 180; i++) {
+        // servoWrite 내부에서 max_angle 초과분은 자동으로 깎아주므로 조건문 불필요
         servoWrite(0, i);
-        if (i <= SERVO_CH1_MAX) servoWrite(1, i);
+        servoWrite(1, i); 
         servoWrite(2, i);
         if (i % 30 == 0) cliPrintf("Moving... %d deg\r\n", i);
         HAL_Delay(15); 
@@ -101,19 +105,18 @@ void servoTotalTest(void) {
 
     HAL_Delay(500);
 
-    // 최종 복귀 위치 수정
-    cliPrintf("Test Complete. Moving to Home (110, 65, 70).\r\n");
-    servoWrite(0, (uint8_t)SERVO_CH0_INIT);
-    servoWrite(1, (uint8_t)SERVO_CH1_INIT);
-    servoWrite(2, (uint8_t)SERVO_CH2_INIT);
+    cliPrintf("Test Complete. Moving to Home.\r\n");
+    servoWrite(0, (uint8_t)servo_list[0].init_angle);
+    servoWrite(1, (uint8_t)servo_list[1].init_angle);
+    servoWrite(2, (uint8_t)servo_list[2].init_angle);
 }
 
 void servoSetTarget(uint8_t ch, float target, float k) {
     if (ch > 2) return;
-    float max_l = (ch == 1) ? (float)SERVO_CH1_MAX : 180.0f;
 
-    if (target < 0.0f) target = 0.0f;
-    if (target > max_l) target = max_l;
+    // 구조체 제한 범위 확인
+    if (target < servo_list[ch].min_angle) target = servo_list[ch].min_angle;
+    if (target > servo_list[ch].max_angle) target = servo_list[ch].max_angle;
 
     servo_list[ch].target_angle = target;
     if (k > 0.0f) servo_list[ch].k = k;
@@ -129,30 +132,23 @@ void servoSmoothUpdate(void) {
     }
 }
 
-
 /**
  * @brief 이미 설정된(Target) 값으로 도달할 때까지 루프를 돌며 이동
  */
 void servoRunToTarget(uint8_t ch) {
     if (ch > 2) return;
 
-    // 이미 servoSetTarget이나 servoSweep이 
-    // servo_list[ch].target_angle과 k를 셋팅해놨으므로 그걸 그냥 씁니다.
     while (1) {
         float diff = servo_list[ch].target_angle - servo_list[ch].current_angle;
 
-        // 거의 도달하면 정수 값 맞추고 종료
         if (fabsf(diff) < 0.1f) {
             servo_list[ch].current_angle = servo_list[ch].target_angle;
             servoWrite(ch, (uint8_t)roundf(servo_list[ch].current_angle));
             break;
         }
 
-        // 보간 연산 및 출력
         servo_list[ch].current_angle += diff * servo_list[ch].k;
         servoWrite(ch, (uint8_t)roundf(servo_list[ch].current_angle));
-
-        // 서보 이동 시간 확보
         HAL_Delay(20);
     }
 }
@@ -162,99 +158,94 @@ void servoSetTargetAll(float target0, float target1, float target2, float k) {
     servoSetTarget(1, target1, k);
     servoSetTarget(2, target2, k);
 }
-/* servo.c */
 
 /**
  * @brief 목표 각도에 도달할 때까지 루프를 돌며 부드럽게 이동
- * @param ch: 채널, target: 목표 각도, k: 부드러움 계수 (0.01 ~ 0.2)
  */
 void servoMoveToTarget(uint8_t ch, float target, float k) {
     if (ch > 2) return;
 
-    // 1. 하드웨어 보호 및 목표값 저장
-    float max_l = (ch == 1) ? (float)SERVO_CH1_MAX : 180.0f;
-    if (target < 0.0f) target = 0.0f;
-    if (target > max_l) target = max_l;
-    
-    servo_list[ch].target_angle = target;
-    if (k > 0.0f) servo_list[ch].k = k;
+    // 하드웨어 보호 및 목표값 설정
+    servoSetTarget(ch, target, k);
 
-    // 2. [핵심] 목표에 도달할 때까지 여기서 직접 돌립니다.
     while (1) {
         float diff = servo_list[ch].target_angle - servo_list[ch].current_angle;
 
-        // 차이가 0.1도 미만이면 도착으로 간주하고 루프 탈출
         if (fabsf(diff) < 0.1f) {
             servo_list[ch].current_angle = servo_list[ch].target_angle;
             servoWrite(ch, (uint8_t)roundf(servo_list[ch].current_angle));
             break;
         }
 
-        // 부드럽게 한 단계 이동
         servo_list[ch].current_angle += diff * servo_list[ch].k;
-        
-        // 실제 PWM 출력
         servoWrite(ch, (uint8_t)roundf(servo_list[ch].current_angle));
-
-        // 서보가 물리적으로 움직일 시간을 줍니다 (매우 중요)
         HAL_Delay(20); 
     }
 }
+
 /**
- * @brief [수정] 스위핑 기준을 초기값으로 변경
+ * @brief 스위핑 기준을 구조체 값으로 변경
  */
 void servoSweep(uint8_t ch, float k) {
     if (ch > 2) return;
     
-    float home = SERVO_CH0_INIT;
-    float max_l = 180.0f;
-    if(ch == 1) { home = SERVO_CH1_INIT; max_l = (float)SERVO_CH1_MAX; }
-    else if(ch == 2) { home = SERVO_CH2_INIT; }
+    float home = servo_list[ch].init_angle;
+    float max_l = servo_list[ch].max_angle;
+    float min_l = servo_list[ch].min_angle;
 
-    // 현재 위치가 초기값보다 작으면 최대치로, 크면 0도로 보냄
-    float target = (servo_list[ch].current_angle < home) ? max_l : 0.0f;
+    // 현재 위치가 초기값보다 작으면 최대치로, 크면 최소치로 보냄
+    float target = (servo_list[ch].current_angle < home) ? max_l : min_l;
     servoSetTarget(ch, target, k);
 }
-/* servo.c 하단 보조 함수 부분 */
 
-// 현재 각도 설정 (필요시 강제 보정용)
-void servoSetCurrentAngle(uint8_t ch, float angle) {
-    if (ch > 2) return;
-    servo_list[ch].current_angle = angle;
+
+/* ============================================================
+ * Getter & Setter 함수 구현부 (다른 파일에서 참조 시 사용)
+ * ============================================================ */
+
+// --- MIN ---
+void servoSetMinAngle(uint8_t ch, float min) {
+    if(ch < 3) servo_list[ch].min_angle = min;
+}
+float servoGetMinAngle(uint8_t ch) {
+    return (ch < 3) ? servo_list[ch].min_angle : 0.0f;
 }
 
-// [수정] 현재 각도 읽기: 잘못된 채널일 경우 채널별 초기값 반환
-float servoGetCurrentAngle(uint8_t ch) {
-    if (ch == 0) return servo_list[0].current_angle;
-    if (ch == 1) return servo_list[1].current_angle;
-    if (ch == 2) return servo_list[2].current_angle;
-    
-    // 잘못된 채널 인덱스(ch > 2)가 들어온 경우 
-    // 가장 안전한 기본값인 0번 채널 초기값으로 대응
-    return SERVO_CH0_INIT; 
+// --- MAX ---
+void servoSetMaxAngle(uint8_t ch, float max) {
+    if(ch < 3) servo_list[ch].max_angle = max;
+}
+float servoGetMaxAngle(uint8_t ch) {
+    return (ch < 3) ? servo_list[ch].max_angle : 180.0f;
 }
 
-// [수정] 목표 각도 읽기: 잘못된 채널일 경우 채널별 초기값 반환
-float servoGetTargetAngle(uint8_t ch) {
-    if (ch == 0) return servo_list[0].target_angle;
-    if (ch == 1) return servo_list[1].target_angle;
-    if (ch == 2) return servo_list[2].target_angle;
-    
-    return SERVO_CH0_INIT;
+// --- INIT (Home) ---
+void servoSetInitAngle(uint8_t ch, float init) {
+    if(ch < 3) servo_list[ch].init_angle = init;
 }
-
-// [수정] 부드러움 계수 읽기
-float servoGetK(uint8_t ch) {
-    if (ch > 2) return 0.1f; // k값은 공통 기본값 사용
-    return servo_list[ch].k;
-}
-
-/**
- * @brief 채널별 설정된 초기(Home) 각도를 반환
- */
 float servoGetInitAngle(uint8_t ch) {
-    if (ch == 0) return SERVO_CH0_INIT;
-    if (ch == 1) return SERVO_CH1_INIT;
-    if (ch == 2) return SERVO_CH2_INIT;
-    return 0.0f; // 예외 상황
+    return (ch < 3) ? servo_list[ch].init_angle : 0.0f;
+}
+
+// --- CURRENT ---
+void servoSetCurrentAngle(uint8_t ch, float angle) {
+    if(ch < 3) servo_list[ch].current_angle = angle;
+}
+float servoGetCurrentAngle(uint8_t ch) {
+    return (ch < 3) ? servo_list[ch].current_angle : 0.0f;
+}
+
+// --- TARGET ---
+// 타겟은 servoSetTarget()으로 설정하므로 Getter만 제공
+float servoGetTargetAngle(uint8_t ch) {
+    return (ch < 3) ? servo_list[ch].target_angle : 0.0f;
+}
+
+// --- K (Smoothing Factor) ---
+void servoSetK(uint8_t ch, float k) {
+    // k값이 너무 작아져 멈추는 현상 방지
+    if(ch < 3 && k > 0.0f) servo_list[ch].k = k;
+}
+float servoGetK(uint8_t ch) {
+    return (ch < 3) ? servo_list[ch].k : 0.1f;
 }
