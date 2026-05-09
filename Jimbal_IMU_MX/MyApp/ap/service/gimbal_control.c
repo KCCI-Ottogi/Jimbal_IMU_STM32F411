@@ -60,10 +60,15 @@ void gimbalSettingCamOffset(float x, float y) {
     accum_cam_offset_y += (y * 0.1f);
 
     // [안전장치] 누적값이 서보의 가동 범위를 벗어나지 않도록 제한합니다.
-    if (accum_cam_offset_x > 60.0f)  accum_cam_offset_x = 60.0f;
-    if (accum_cam_offset_x < -60.0f) accum_cam_offset_x = -60.0f;
-    if (accum_cam_offset_y > 40.0f)  accum_cam_offset_y = 40.0f;
-    if (accum_cam_offset_y < -40.0f) accum_cam_offset_y = -40.0f;
+    // if (accum_cam_offset_x > 60.0f)  accum_cam_offset_x = 60.0f;
+    // if (accum_cam_offset_x < -60.0f) accum_cam_offset_x = -60.0f;
+    // if (accum_cam_offset_y > 40.0f)  accum_cam_offset_y = 40.0f;
+    // if (accum_cam_offset_y < -40.0f) accum_cam_offset_y = -40.0f;
+
+    if (accum_cam_offset_x > 110.0f)  accum_cam_offset_x = 110.0f;
+    if (accum_cam_offset_x < -110.0f) accum_cam_offset_x = -110.0f;
+    if (accum_cam_offset_y > 110.0f)  accum_cam_offset_y = 110.0f;
+    if (accum_cam_offset_y < -110.0f) accum_cam_offset_y = -110.0f;
 }
 
 
