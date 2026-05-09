@@ -416,9 +416,27 @@ void cliGimbal(uint8_t argc, char **argv) {
       gimbal_report_period = 0;
       gimbalReturnHome();
       cliPrintf("Gimbal Report : OFF & return Home\r\n");
+    }// 2. gimbal cam on/off 처리 (strcmp 반환값 및 argc 체크 수정)
+    else if (strcmp(argv[1], "cam") == 0) { // == 0 추가
+        if (argc >= 3) { // argv[2]를 쓰려면 argc가 최소 3이어야 함
+            if (strcmp(argv[2], "on") == 0) { // == 0 추가
+                gimbalSetCamControlEnable(true);
+                cliPrintf("Gimbal Camera Control: ON\r\n");
+            } 
+            else if (strcmp(argv[2], "off") == 0) { // == 0 추가
+                gimbalSetCamControlEnable(false);
+                cliPrintf("Gimbal Camera Control: OFF\r\n");
+            }
+            else {
+                cliPrintf("Usage: gim cam [on|off]\r\n");
+            }
+        } else {
+            cliPrintf("Usage: gim cam [on|off]\r\n");
+        }
     }
   } else {
     cliPrintf("Usage: gim [on|off] [period]\r\n");
+    cliPrintf("       gim cam [on|off]\r\n");
   }
 }
 
