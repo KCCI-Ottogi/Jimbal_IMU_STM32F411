@@ -44,4 +44,17 @@ void gimbalReturnHome(void);
  */
 float gimbalGetCurrentAngle(uint8_t ch);
 
+/* gimbal_control.h */
+
+
+/**
+ * @brief 카메라 제어 활성화/비활성화 설정
+ */
+void gimbalSetCamControlEnable(bool enable);
+
+/**
+ * @brief 현재 카메라 제어 활성화 상태 확인
+ */
+bool gimbalGetCamControlEnable(void);
+
 #endif /* __GIMBAL_CONTROL_H__ */
