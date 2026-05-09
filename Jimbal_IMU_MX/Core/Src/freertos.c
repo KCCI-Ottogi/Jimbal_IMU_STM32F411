@@ -79,7 +79,7 @@ const osThreadAttr_t myTaskMonitor_attributes = {
 osThreadId_t myTaskMagHandle;
 const osThreadAttr_t myTaskMag_attributes = {
   .name = "myTaskMag",
-  .stack_size = 256 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal3,
 };
 /* Definitions for myTaskGimbal */
