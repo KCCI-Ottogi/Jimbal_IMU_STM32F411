@@ -4,7 +4,7 @@
 #define __AP_SERVICE_GIMBAL_H__
 
 
-#include "gimbal_control.h" // gimbalUpdateFromIMU 보고용
+// #include "gimbal_control.h" // gimbalUpdateFromIMU 보고용
 
 #include "monitor.h"
 
@@ -23,16 +23,13 @@
 
 // 서비스 초기화 (MPU6050 초기화 포함)
 bool gyroServiceInit(void);
-
 void gyroServiceUpdate(void);
-
-bool gyroServiceReInit(void); // 하드웨어 재초기화
+bool gyroServiceReInit(void);
 bool gyroServiceIsOk(void);
 
 
 // CLI 등에서 사용할 설정 함수
 void gyroServiceSetPeriod(uint32_t period);
-
 void gyroServiceSetMagData(Mag_Data_t *p_mag);
 
 
@@ -41,5 +38,7 @@ void gyroServiceSetMagData(Mag_Data_t *p_mag);
  */
 void gyroServiceSetOrigin(float current_abs_yaw);
 
+// [수정: 제어기가 데이터를 가져갈 수 있도록 Getter 추가]
+void gyroServiceGetLatestAngles(float *r, float *p, float *y);
 
 #endif

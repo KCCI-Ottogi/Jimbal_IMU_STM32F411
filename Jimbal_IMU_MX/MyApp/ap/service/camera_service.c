@@ -3,6 +3,11 @@
 // 최신 카메라 데이터를 저장할 구조체
 static camera_data_t cam_data;
 
+// [수정: PID 결과를 저장할 내부 변수]
+static float filtered_pid_x = 0.0f;
+static float filtered_pid_y = 0.0f;
+
+
 // [PID 상태 변수] 이전 오차와 누적 오차를 기억하기 위함
 static float error_x_sum = 0.0f, error_x_prev = 0.0f;
 static float error_y_sum = 0.0f, error_y_prev = 0.0f;
@@ -53,7 +58,9 @@ void cameraDataParsing(void) {
                 
                 // [테스트 로그] STM32 터미널에서 확인용
                 if (cam_data.is_detected) {
-                    cliPrintf("[STM32_LOG] CX=%d CY=%d AREA=%d\r\n", cam_data.x, cam_data.y, cam_data.area);
+                    // cliPrintf("[STM32_LOG] CX=%d CY=%d AREA=%d\r\n", cam_data.x, cam_data.y, cam_data.area);
+                    
+                    cliPrintf("[STM32_LOG] CX=%d CY=%d \r\n", cam_data.x, cam_data.y);
                 } else {
                     cliPrintf("[STM32_LOG] 타겟 없음\r\n");
                 }
@@ -107,9 +114,6 @@ void cameraDataParsing(void) {
 // }
 
 
-// 상단에 필터링된 결과값을 유지하기 위한 정적 변수 추가
-static float filtered_pid_x = 0.0f;
-static float filtered_pid_y = 0.0f;
 
 void cameraServicePIDUpdate(void) {
     static uint32_t last_print_tick = 0; // 로그 출력 타이밍 관리
@@ -124,7 +128,7 @@ void cameraServicePIDUpdate(void) {
         // 타겟이 없으면 보정치를 서서히 0으로 되돌림 (스르륵 복귀)
         filtered_pid_x *= 0.9f; 
         filtered_pid_y *= 0.9f;
-        gimbalSettingCamOffset(filtered_pid_x, filtered_pid_y);
+        // gimbalSettingCamOffset(filtered_pid_x, filtered_pid_y);
         return;
     }
 
@@ -189,7 +193,10 @@ void cameraServicePIDUpdate(void) {
                   cam_data.x, cam_data.y, err_x, err_y, filtered_pid_x, filtered_pid_y);
         last_print_tick = now;
     }
+}
 
-    // 최종 보정된 값을 짐벌 오프셋으로 설정
-    gimbalSettingCamOffset(filtered_pid_x, filtered_pid_y);
+// [수정: Pull 방식용 Getter 함수 구현]
+void cameraServiceGetPIDOffset(float *out_x, float *out_y) {
+    if (out_x) *out_x = filtered_pid_x;
+    if (out_y) *out_y = filtered_pid_y;
 }

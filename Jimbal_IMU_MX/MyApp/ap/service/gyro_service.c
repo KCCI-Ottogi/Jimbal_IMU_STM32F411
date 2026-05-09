@@ -18,7 +18,10 @@ static float yaw_origin = 0.0f;
 static bool is_origin_set = false;
 static float filtered_rel_yaw = 0.0f; // 정적 변수로 유지하여 필터 값 보존
 
-
+// [수정: 최신 계산값을 저장할 내부 변수 추가]
+static float latest_roll = 0.0f;
+static float latest_pitch = 0.0f;
+static float latest_yaw = 0.0f;
 /**
  * @brief [수정] 전원 켠 순간의 절대 각도를 영점으로 잡는 함수 분리
  */
@@ -138,8 +141,11 @@ static void IMU_ComputeAngles_Service(Gyro_Data_t *imu, Mag_Data_t *mag, float d
      */
     imu->yaw = -filtered_rel_yaw; 
 
-    // 3. 계산된 각도(편차)를 짐벌 제어기에 업데이트
-    gimbalSettingIMU(imu->roll, imu->pitch, imu->yaw);
+    // [수정: gimbalSettingIMU 호출 대신 내부 변수에 저장]
+    latest_roll  = imu->roll;
+    latest_pitch = imu->pitch;
+    latest_yaw   = -filtered_rel_yaw; // 부호 반전 포함
+
 }
 //////////////////////////////
 
@@ -298,4 +304,11 @@ void gyroServiceUpdate(void) {
             monitorUpdateValue(ID_IMU_GYRO_Z, TYPE_FLOAT, &gyroData.yaw);
         }
     }
+}
+
+// [수정: Pull 방식용 Getter 함수 구현]
+void gyroServiceGetLatestAngles(float *r, float *p, float *y) {
+    if (r) *r = latest_roll;
+    if (p) *p = latest_pitch;
+    if (y) *y = latest_yaw;
 }
