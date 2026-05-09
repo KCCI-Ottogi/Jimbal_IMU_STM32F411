@@ -32,13 +32,6 @@ bool gyroServiceIsOk(void);
 void gyroServiceSetPeriod(uint32_t period);
 void gyroServiceSetMagData(Mag_Data_t *p_mag);
 
-
-/**
- * @brief [추가] 현재 절대 각도를 서보의 초기 위치(INIT)와 매칭시키는 기준점으로 설정
- */
-void gyroServiceSetOrigin(float current_abs_yaw);
-
-// [수정: 제어기가 데이터를 가져갈 수 있도록 Getter 추가]
+void gyroServiceSetOrigin(float abs_r, float abs_p, float abs_y);
 void gyroServiceGetLatestAngles(float *r, float *p, float *y);
-
 #endif

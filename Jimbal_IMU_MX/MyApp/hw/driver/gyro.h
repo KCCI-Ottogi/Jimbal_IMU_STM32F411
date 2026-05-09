@@ -34,6 +34,8 @@ bool Gyro_Read(Gyro_Data_t *pData);
 
 // 각도 계산 함수 (상호보완 필터 적용)
 void IMU_ComputeAngles(Gyro_Data_t *imu, Mag_Data_t *mag, float dt);
-
+/* gyro_service.h */
+// 인자를 3개(Roll, Pitch, Yaw) 받는 것으로 수정
+void gyroServiceSetOrigin(float abs_r, float abs_p, float abs_y);
 #endif // GYRO_H
 

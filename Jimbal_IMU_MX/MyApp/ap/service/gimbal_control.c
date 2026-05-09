@@ -73,104 +73,171 @@ void gimbalSettingCamOffset(float x, float y) {
 }
 
 
+// /**
+//  * @brief [통합 제어부] ap.c에서 주기적으로 호출하여 서보에 최종 명령을 내림
+//  */
+//  void gimbalExecuteCombinedControl(void) {
+
+//     float imu_r, imu_p, imu_y;
+//     gyroServiceGetLatestAngles(&imu_r, &imu_p, &imu_y);
+
+//     float cam_pid_x = 0.0f, cam_pid_y = 0.0f;
+//     cameraServiceGetPIDOffset(&cam_pid_x, &cam_pid_y);
+
+
+    
+//     if (is_cam_control_enable) {
+//         // 카메라 서비스에서 가져온 PID 출력값을 누적
+//         accum_cam_offset_x += (cam_pid_x * -0.1f);
+//         accum_cam_offset_y += (cam_pid_y * 0.1f);
+//     }
+
+
+//     // 1. servo.c에서 정의된 초기값(Init)을 가져옵니다.
+//     float init_r = servoGetInitAngle(0);
+//     float init_p = servoGetInitAngle(1);
+//     float init_y = servoGetInitAngle(2);
+
+//     // 이전 목표 각도를 저장하기 위한 정적 변수 (최초 1회만 init값으로 설정)
+//     static float last_final_roll = -1.0f;
+//     static float last_final_pitch = -1.0f;
+//     static float last_final_yaw = -1.0f;
+
+//     if (last_final_roll < 0) { // 초기화
+//         last_final_roll = init_r;
+//         last_final_pitch = init_p;
+//         last_final_yaw = init_y;
+//     }
+    
+//     // 4. 최종 목표 각도 계산 
+//     // [핵심] 가져온 최신 데이터(imu_r, imu_p)를 사용하고, 방향 보정을 위해 -1.0f를 곱합니다.
+//     float final_roll  = init_r + (imu_r * -1.0f);
+//     float final_pitch = init_p + (imu_p * -1.0f);
+//     float final_yaw   = init_y + (imu_y * -1.0f); //0.0f; //(imu_y * 1.0f)
+
+//     // 3. 카메라 제어가 켜져있을 때만 누적값 합산
+//     if (is_cam_control_enable) {
+//         final_pitch += accum_cam_offset_y;
+//         final_yaw   += accum_cam_offset_x;
+//     }
+
+
+//     // 4. 서보 모터 하드웨어 보호를 위한 리미트 (Clamping)
+//    // Roll 축 (CH 0) 리미트 체크
+//     if (final_roll < servoGetMinAngle(0)) final_roll = servoGetMinAngle(0);
+//     if (final_roll > servoGetMaxAngle(0)) final_roll = servoGetMaxAngle(0);
+
+//     // Pitch 축 (CH 1) 리미트 체크
+//     if (final_pitch < servoGetMinAngle(1)) final_pitch = servoGetMinAngle(1);
+//     if (final_pitch > servoGetMaxAngle(1)) final_pitch = servoGetMaxAngle(1);
+
+//     // Yaw 축 (CH 2) 리미트 체크
+//     if (final_yaw < servoGetMinAngle(2)) final_yaw = servoGetMinAngle(2);
+//     if (final_yaw > servoGetMaxAngle(2)) final_yaw = servoGetMaxAngle(2);
+
+//     // [CLI 모니터링] 기존 형식을 유지하되, 숫자 90 부분만 실제 init값으로 출력
+//     static uint32_t last_log_time = 0;
+//     if (osKernelGetTickCount() - last_log_time >= 100) {
+//         last_log_time = osKernelGetTickCount();
+
+//         float diff_r = final_roll - last_final_roll;
+//         float diff_p = final_pitch - last_final_pitch;
+//         float diff_y = final_yaw - last_final_yaw;
+
+//         // 원하신 대로 기존 CLI 포맷을 그대로 유지합니다.
+//         // R(초기값):현재IMU->최종목표(차이) | P(초기값):현재IMU+오프셋->최종목표(차이) | ...
+//         // cliPrintf("R(%.1f):%.1f->%.1f(%.2f) | P(%.1f):%.1f+%.1f->%.1f(%.2f) | Y(%.1f):%.1f+%.1f->%.1f(%.2f)\r\n",
+//         //           init_r, imu_roll, final_roll, diff_r,
+//         //           init_p, imu_pitch, cam_offset_y, final_pitch, diff_p,
+//         //           init_y, imu_yaw, cam_offset_x, final_yaw, diff_y);
+
+//         cliPrintf("R(%.1f):%.1f->%.1f(%.2f) | P(%.1f):%.1f+%.1f->%.1f(%.2f) | Y(%.1f):%.1f+%.1f->%.1f(%.2f)\r\n",
+//                   init_r, imu_r, final_roll, diff_r,
+//                   init_p, imu_p, accum_cam_offset_y, final_pitch, diff_p,
+//                   init_y, imu_y, accum_cam_offset_x, final_yaw, diff_y);
+//         // 현재 값을 다음 비교를 위해 저장
+//         last_final_roll = final_roll;
+//         last_final_pitch = final_pitch;
+//         last_final_yaw = final_yaw;
+//     }
+
+//     // 5. 최종 목표 각도를 서보 드라이버에 전달
+//     servoSetTarget(0, final_roll,  0.3f); // Roll 축
+//     servoSetTarget(1, final_pitch, 0.3f); // Pitch 축
+//     servoSetTarget(2, final_yaw,   0.3f); // Yaw 축
+    
+//     // 6. 실제 보간 이동 실행
+//     servoSmoothUpdate();
+// }
+
 /**
  * @brief [통합 제어부] ap.c에서 주기적으로 호출하여 서보에 최종 명령을 내림
+ * 로직 구성: 초기값(Center) + 기울기 보정(IMU) + 추적 누적값(Camera)
  */
- void gimbalExecuteCombinedControl(void) {
-
+void gimbalExecuteCombinedControl(void) {
+    // 1. 최신 데이터 확보 (IMU 각도 및 카메라 PID 오차)
     float imu_r, imu_p, imu_y;
     gyroServiceGetLatestAngles(&imu_r, &imu_p, &imu_y);
 
     float cam_pid_x = 0.0f, cam_pid_y = 0.0f;
     cameraServiceGetPIDOffset(&cam_pid_x, &cam_pid_y);
 
-
-    
-    if (is_cam_control_enable) {
-        // 카메라 서비스에서 가져온 PID 출력값을 누적
+    // 2. 카메라 제어 활성화 시 PID 출력값을 누적 변수에 합산
+    if (gimbalGetCamControlEnable()) {
+        // 기존 가중치(-0.1, 0.1)와 누적 로직 유지
         accum_cam_offset_x += (cam_pid_x * -0.1f);
         accum_cam_offset_y += (cam_pid_y * 0.1f);
     }
 
+    // 3. 서보별 초기 위치(Init) 로드
+    float init_r = servoGetInitAngle(GIMBAL_CH_ROLL);
+    float init_p = servoGetInitAngle(GIMBAL_CH_PITCH);
+    float init_y = servoGetInitAngle(GIMBAL_CH_YAW);
 
-    // 1. servo.c에서 정의된 초기값(Init)을 가져옵니다.
-    float init_r = servoGetInitAngle(0);
-    float init_p = servoGetInitAngle(1);
-    float init_y = servoGetInitAngle(2);
-
-    // 이전 목표 각도를 저장하기 위한 정적 변수 (최초 1회만 init값으로 설정)
-    static float last_final_roll = -1.0f;
-    static float last_final_pitch = -1.0f;
-    static float last_final_yaw = -1.0f;
-
-    if (last_final_roll < 0) { // 초기화
-        last_final_roll = init_r;
-        last_final_pitch = init_p;
-        last_final_yaw = init_y;
-    }
-    
-    // 4. 최종 목표 각도 계산 
-    // [핵심] 가져온 최신 데이터(imu_r, imu_p)를 사용하고, 방향 보정을 위해 -1.0f를 곱합니다.
+    // 4. 최종 목표 각도 계산 (Base = Init + IMU 보정)
     float final_roll  = init_r + (imu_r * -1.0f);
     float final_pitch = init_p + (imu_p * -1.0f);
-    float final_yaw   = init_y + 0.0f; //(imu_y * 1.0f)
+    float final_yaw   = init_y + (imu_y * -1.0f);
 
-    // 3. 카메라 제어가 켜져있을 때만 누적값 합산
-    if (is_cam_control_enable) {
+    // 5. 카메라 추적 누적값 추가 적용
+    if (gimbalGetCamControlEnable()) {
         final_pitch += accum_cam_offset_y;
         final_yaw   += accum_cam_offset_x;
     }
+// 4. 서보 모터 하드웨어 보호를 위한 리미트 (Clamping)
+// Roll 축 (CH 0)
+if (final_roll < servoGetMinAngle(0)) final_roll = servoGetMinAngle(0);
+if (final_roll > servoGetMaxAngle(0)) final_roll = servoGetMaxAngle(0);
 
+// Pitch 축 (CH 1)
+if (final_pitch < servoGetMinAngle(1)) final_pitch = servoGetMinAngle(1);
+if (final_pitch > servoGetMaxAngle(1)) final_pitch = servoGetMaxAngle(1);
 
-    // 4. 서보 모터 하드웨어 보호를 위한 리미트 (Clamping)
-   // Roll 축 (CH 0) 리미트 체크
-    if (final_roll < servoGetMinAngle(0)) final_roll = servoGetMinAngle(0);
-    if (final_roll > servoGetMaxAngle(0)) final_roll = servoGetMaxAngle(0);
-
-    // Pitch 축 (CH 1) 리미트 체크
-    if (final_pitch < servoGetMinAngle(1)) final_pitch = servoGetMinAngle(1);
-    if (final_pitch > servoGetMaxAngle(1)) final_pitch = servoGetMaxAngle(1);
-
-    // Yaw 축 (CH 2) 리미트 체크
-    if (final_yaw < servoGetMinAngle(2)) final_yaw = servoGetMinAngle(2);
-    if (final_yaw > servoGetMaxAngle(2)) final_yaw = servoGetMaxAngle(2);
-
-    // [CLI 모니터링] 기존 형식을 유지하되, 숫자 90 부분만 실제 init값으로 출력
+// Yaw 축 (CH 2)
+if (final_yaw < servoGetMinAngle(2)) final_yaw = servoGetMinAngle(2);
+if (final_yaw > servoGetMaxAngle(2)) final_yaw = servoGetMaxAngle(2);
+    // 7. CLI 모니터링 출력 (100ms 주기)
     static uint32_t last_log_time = 0;
+    static float last_f_roll = 0, last_f_pitch = 0, last_f_yaw = 0; // 차이 계산용
+
     if (osKernelGetTickCount() - last_log_time >= 100) {
         last_log_time = osKernelGetTickCount();
-
-        float diff_r = final_roll - last_final_roll;
-        float diff_p = final_pitch - last_final_pitch;
-        float diff_y = final_yaw - last_final_yaw;
-
-        // 원하신 대로 기존 CLI 포맷을 그대로 유지합니다.
-        // R(초기값):현재IMU->최종목표(차이) | P(초기값):현재IMU+오프셋->최종목표(차이) | ...
-        // cliPrintf("R(%.1f):%.1f->%.1f(%.2f) | P(%.1f):%.1f+%.1f->%.1f(%.2f) | Y(%.1f):%.1f+%.1f->%.1f(%.2f)\r\n",
-        //           init_r, imu_roll, final_roll, diff_r,
-        //           init_p, imu_pitch, cam_offset_y, final_pitch, diff_p,
-        //           init_y, imu_yaw, cam_offset_x, final_yaw, diff_y);
-
+        
         cliPrintf("R(%.1f):%.1f->%.1f(%.2f) | P(%.1f):%.1f+%.1f->%.1f(%.2f) | Y(%.1f):%.1f+%.1f->%.1f(%.2f)\r\n",
-                  init_r, imu_r, final_roll, diff_r,
-                  init_p, imu_p, accum_cam_offset_y, final_pitch, diff_p,
-                  init_y, imu_y, accum_cam_offset_x, final_yaw, diff_y);
-        // 현재 값을 다음 비교를 위해 저장
-        last_final_roll = final_roll;
-        last_final_pitch = final_pitch;
-        last_final_yaw = final_yaw;
+                  init_r, imu_r, final_roll,  (final_roll - last_f_roll),
+                  init_p, imu_p, accum_cam_offset_y, final_pitch, (final_pitch - last_f_pitch),
+                  init_y, imu_y, accum_cam_offset_x, final_yaw, (final_yaw - last_f_yaw));
+
+        last_f_roll = final_roll; last_f_pitch = final_pitch; last_f_yaw = final_yaw;
     }
 
-    // 5. 최종 목표 각도를 서보 드라이버에 전달
-    servoSetTarget(0, final_roll,  0.3f); // Roll 축
-    servoSetTarget(1, final_pitch, 0.3f); // Pitch 축
-    servoSetTarget(2, final_yaw,   0.3f); // Yaw 축
+    // 8. 서보 드라이버 업데이트
+    servoSetTarget(GIMBAL_CH_ROLL,  final_roll,  0.3f);
+    servoSetTarget(GIMBAL_CH_PITCH, final_pitch, 0.3f);
+    servoSetTarget(GIMBAL_CH_YAW,   final_yaw,   0.3f);
     
-    // 6. 실제 보간 이동 실행
     servoSmoothUpdate();
 }
-
-
 
 /**
  * @brief 짐벌을 초기 정면 위치로 복귀

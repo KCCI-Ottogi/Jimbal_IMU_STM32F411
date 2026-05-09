@@ -148,9 +148,21 @@ void cliImu(uint8_t argc, char **argv) {
           cliPrintf("ERROR: Sensor Init Failed. Check Wires.\r\n");
           return;
       }
-      gyroServiceSetPeriod(period);
-      cliPrintf("IMU Report : ON (%d ms)\r\n", period);
+      // ---------------------------------------------------------
+      // 🎯 [추가할 부분] 영점(Origin) 설정 로직
+      // ---------------------------------------------------------
+      // 센서가 켜진 직후, 현재 계산된 절대 각도를 가져와서 0점으로 잡습니다.
+      osDelay(500);
+      float r_abs = 0.0f;
+      float p_abs = 0.0f;
+      float y_abs = 0.0f;
+      // 최신 각도(절대값)를 읽어와서
+        gyroServiceGetLatestAngles(&r_abs, &p_abs, &y_abs); 
+        // 3개의 인자를 넣어 영점으로 고정!
+        gyroServiceSetOrigin(r_abs, p_abs, y_abs); 
 
+        cliPrintf("IMU Report : ON\r\n");
+        gyroServiceSetPeriod(500);
     } else if (strcmp(argv[1], "off") == 0) {
       gyroServiceSetPeriod(0);
       cliPrintf("IMU Report : OFF\r\n");
@@ -158,7 +170,19 @@ void cliImu(uint8_t argc, char **argv) {
   }
 }
 
-
+void cliMag(uint8_t argc, char **argv) {
+    if (argc >= 3 && strcmp(argv[1], "calib") == 0) {
+        if (strcmp(argv[2], "on") == 0) {
+            Mag_SetCalibrationMode(true);
+        } else if (strcmp(argv[2], "off") == 0) {
+            Mag_SetCalibrationMode(false);
+        } else {
+            cliPrintf("Usage: mag calib [on|off]\r\n");
+        }
+    } else {
+        cliPrintf("Usage: mag calib [on|off]\r\n");
+    }
+}
 static bool isSafeAddress(uint32_t addr)
 {
   // 1. f411 flash
@@ -654,6 +678,7 @@ void apInit(void)
     cliAdd("button", cliButton);
     // cliAdd("temp", cliTemp);    
   cliAdd("imu", cliImu); // IMU 명령어 추가
+  cliAdd("mag", cliMag);
   cliAdd("servo", cliServo);
   cliAdd("gim", cliGimbal);
 
