@@ -6,8 +6,7 @@
 // #include "bsp.h"
 // #include "hw.h"
 
-// #include "gimbal_control.h"//없어도 됨
-#include "gyro_service.h"
+#include "gimbal_control.h"
 
 void apInit(void);
 void apMain(void);

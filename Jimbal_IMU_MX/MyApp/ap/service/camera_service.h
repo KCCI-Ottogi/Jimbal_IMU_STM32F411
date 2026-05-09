@@ -3,7 +3,8 @@
 #define __CAMERA_SERVICE_H__
 
 #include "hw_def.h"
-#include "gimbal_control.h" // 보정치 전달을 위해 추가 (servo.h는 제거 가능)
+#include "cli.h"
+// #include "gimbal_control.h" // 보정치 전달을 위해 추가 (servo.h는 제거 가능)
 
 
 
@@ -34,5 +35,6 @@ void cameraDataParsing(void);
 
 void cameraServicePIDUpdate(void);
 
-
+// [수정: 제어기가 데이터를 가져갈 수 있도록 Getter 추가]
+void cameraServiceGetPIDOffset(float *out_x, float *out_y);
 #endif /* __CAMERA_SERVICE_H__ */
