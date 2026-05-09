@@ -36,7 +36,7 @@ bool gimbalGetCamControlEnable(void) {
 void gimbalSettingIMU(float roll, float pitch, float yaw) {
     imu_roll = roll *-1 ;
     imu_pitch = pitch *-1;
-    imu_yaw = yaw;//0; //
+    imu_yaw = 0; //yaw;
 }
 
 // /**
