@@ -1,6 +1,4 @@
 #include "ap.h"
-#include "cmsis_os2.h"
-#include "service/camera_service.h"
 
 
 // FreeRTOS 세마포어 핸들
@@ -267,6 +265,64 @@ void cliMd(uint8_t argc, char **argv)
     cliPrintf("        md 08000000 32 \r\n");
   }
 }
+
+
+#include "ap.h"
+#include "stm32f4xx_hal.h"
+#include <string.h>
+#include <stdio.h>
+
+#define OTA_FLAG_ADDRESS        0x08004000 // Sector 1 시작 주소
+#define DOWNLOAD_PARTITION_ADDR 0x08040000 // Sector 6 시작 주소
+#define OTA_UPDATE_MAGIC_NUM    0xDEADBEEF // 업데이트 대기 플래그
+
+// ESP8266을 통해 다운로드하고 플래시에 쓰는 가상의 함수 (앞선 답변의 로직 활용)
+extern bool ESP8266_DownloadToFlash(const char* url, uint32_t flash_addr);
+// CLI 처리 함수
+void cliOTA(uint8_t argc, char **argv) {
+    // "ota on" 명령어 입력 시
+    if (argc > 1 && strcmp(argv[1], "on") == 0) {
+        printf("\r\n[CLI] Starting OTA Update Process...\r\n");
+
+        // 1. ESP8266 초기화
+        esp8266_Init();
+
+        // 2. 펌웨어 다운로드 및 Sector 6에 저장
+        const char* s3_host = "gimbal-s3-imu-elf-file.s3.us-east-1.amazonaws.com";
+        const char* s3_file = "/Jimbal_IMU_MX.bin";
+        
+        bool success = esp8266_DownloadOTA(s3_host, s3_file, DOWNLOAD_PARTITION_ADDR);
+
+        if (success) {
+            printf("[CLI] OTA Ready. Setting Boot Flag...\r\n");
+            
+            // 3. Sector 1에 OTA 업데이트 대기 플래그 기록
+            HAL_FLASH_Unlock();
+            FLASH_EraseInitTypeDef EraseInitStruct;
+            uint32_t SectorError;
+            EraseInitStruct.TypeErase = FLASH_TYPEERASE_SECTORS;
+            EraseInitStruct.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+            EraseInitStruct.Sector = FLASH_SECTOR_1;
+            EraseInitStruct.NbSectors = 1;
+            HAL_FLASHEx_Erase(&EraseInitStruct, &SectorError);
+            
+            HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, OTA_FLAG_ADDRESS, OTA_UPDATE_MAGIC_NUM);
+            HAL_FLASH_Lock();
+
+            // 4. 시스템 재부팅 (자동으로 부트로더로 진입)
+            printf("[CLI] Rebooting to Bootloader in 2 seconds...\r\n");
+            HAL_Delay(2000);
+            NVIC_SystemReset(); 
+        } else {
+            printf("[CLI] OTA Download Failed. Aborting.\r\n");
+        }
+    } 
+    else {
+        printf("Usage: ota on\r\n");
+    }
+}
+
+
 
 // argv[1] : "read" "write"
 // argv[2] : pin "A5", "B12"
@@ -675,6 +731,7 @@ void apInit(void)
   cliAdd("imu", cliImu); // IMU 명령어 추가
   cliAdd("servo", cliServo);
   cliAdd("gim", cliGimbal);
+  cliAdd("ota", cliOTA);
 
 
 }
