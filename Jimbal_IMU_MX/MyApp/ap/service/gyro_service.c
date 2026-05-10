@@ -32,6 +32,22 @@ void gyroServiceSetOrigin(float current_abs_yaw) {
     cliPrintf("[IMU] New Yaw Origin Set: %.2f\r\n", yaw_origin);
 }
 
+/* gyro_service.c */
+
+void gyroServiceSyncCurrentOrigin(void) {
+    // 1. 현재 지자기 센서가 읽고 있는 절대 방위각을 가져옴
+    float current_abs_yaw = latest_yaw + yaw_origin;
+    
+    // 2. 이 각도를 새로운 영점(yaw_origin)으로 설정
+    yaw_origin = current_abs_yaw;
+    is_origin_set = true;
+    
+    // 3. 자이로 적분으로 계산 중이던 상대 각도도 0으로 리셋
+    filtered_rel_yaw = 0.0f;// 상대 각도 누적값 리셋
+    latest_yaw = 0.0f; //  추가: 제어기가 가져가는 최신값도 즉시 0으로!
+    
+    cliPrintf("[IMU] Zero-Point Aligned to Current Heading.\r\n");}
+
 // /**
 //  * @brief 센서 데이터를 읽어 각도를 계산하고 제어기로 전송
 //  */

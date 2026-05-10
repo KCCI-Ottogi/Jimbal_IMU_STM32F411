@@ -231,7 +231,7 @@ void cameraServiceGetPIDOffset(float *out_x, float *out_y) {
 }
 
 
-void cameraServiceResetOffset(void) {
+void cameraServiceResetZeroPoint(void) {
     absolute_cam_offset_x = 0.0f;
     absolute_cam_offset_y = 0.0f;
 
@@ -242,4 +242,6 @@ void cameraServiceResetOffset(void) {
     error_y_sum = 0.0f;
     error_x_prev = 0.0f;
     error_y_prev = 0.0f;
+
+    cliPrintf("[CAM] Camera Offset Reset to Zero.\r\n");
 }

@@ -13,7 +13,7 @@
 // #include "cli.h"            // cliPrintf, isMonitoringOn 사용
 // #include "gyro.h"   // RAD_TO_DEG, GYRO_SCALE 참조, Gyro_Read, Gyro_Data_t 사용
 // #include "servo.h"  // SERVO_CH2_INIT 참조
-
+// #include "mag.h" // Mag_Data_t 정의를 위해 필요
 
 // [수정] 하드코딩 방지를 위해 서비스용 가중치를 헤더에서 관리
 #define IMU_ALPHA        0.96f   // Roll, Pitch용
@@ -37,6 +37,8 @@ void gyroServiceSetMagData(Mag_Data_t *p_mag);
  * @brief [추가] 현재 절대 각도를 서보의 초기 위치(INIT)와 매칭시키는 기준점으로 설정
  */
 void gyroServiceSetOrigin(float current_abs_yaw);
+
+void gyroServiceSyncCurrentOrigin(void);
 
 // [수정: 제어기가 데이터를 가져갈 수 있도록 Getter 추가]
 void gyroServiceGetLatestAngles(float *r, float *p, float *y);
