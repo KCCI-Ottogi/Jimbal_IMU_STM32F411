@@ -11,8 +11,8 @@
 // static float cam_offset_y = 0.0f;
 
 // [수정] 단순 대입용이 아닌, 계속 더해나갈 누적 변수로 변경합니다.
-static float accum_cam_offset_x = 0.0f;
-static float accum_cam_offset_y = 0.0f;
+// static float accum_cam_offset_x = 0.0f;
+// static float accum_cam_offset_y = 0.0f;
 
 // [추가] 서보 각도 계산을 위한 기준점 변수
 // static float yaw_origin = -1.0f;
@@ -47,30 +47,30 @@ bool gimbalGetCamControlEnable(void) {
 //     cam_offset_y = y;
 // }
 
-/**
- * @brief [중요 수정] 카메라 PID 출력값을 기존 값에 '누적'합니다.
- */
-void gimbalSettingCamOffset(float x, float y) {
+// /**
+//  * @brief [중요 수정] 카메라 PID 출력값을 기존 값에 '누적'합니다.
+//  */
+// void gimbalSettingCamOffset(float x, float y) {
     
-    // x, y는 PID 제어기에서 나온 '보정량'입니다.
-    // 기존 누적값에 이 보정량을 더해줌으로써, 타겟이 중앙에 오면 
-    // 보정량이 0이 되어 현재의 각도를 그대로 유지하게 됩니다.
+//     // x, y는 PID 제어기에서 나온 '보정량'입니다.
+//     // 기존 누적값에 이 보정량을 더해줌으로써, 타겟이 중앙에 오면 
+//     // 보정량이 0이 되어 현재의 각도를 그대로 유지하게 됩니다.
     
-    // 0.1f는 감도 조절용 가중치입니다. 너무 느리면 키우고, 떨리면 줄이세요.
-    accum_cam_offset_x += (x * -0.1f); 
-    accum_cam_offset_y += (y * 0.1f);
+//     // 0.1f는 감도 조절용 가중치입니다. 너무 느리면 키우고, 떨리면 줄이세요.
+//     accum_cam_offset_x += (x * -0.1f); 
+//     accum_cam_offset_y += (y * 0.1f);
 
-    // [안전장치] 누적값이 서보의 가동 범위를 벗어나지 않도록 제한합니다.
-    // if (accum_cam_offset_x > 60.0f)  accum_cam_offset_x = 60.0f;
-    // if (accum_cam_offset_x < -60.0f) accum_cam_offset_x = -60.0f;
-    // if (accum_cam_offset_y > 40.0f)  accum_cam_offset_y = 40.0f;
-    // if (accum_cam_offset_y < -40.0f) accum_cam_offset_y = -40.0f;
+//     // [안전장치] 누적값이 서보의 가동 범위를 벗어나지 않도록 제한합니다.
+//     // if (accum_cam_offset_x > 60.0f)  accum_cam_offset_x = 60.0f;
+//     // if (accum_cam_offset_x < -60.0f) accum_cam_offset_x = -60.0f;
+//     // if (accum_cam_offset_y > 40.0f)  accum_cam_offset_y = 40.0f;
+//     // if (accum_cam_offset_y < -40.0f) accum_cam_offset_y = -40.0f;
 
-    if (accum_cam_offset_x > 110.0f)  accum_cam_offset_x = 110.0f;
-    if (accum_cam_offset_x < -110.0f) accum_cam_offset_x = -110.0f;
-    if (accum_cam_offset_y > 110.0f)  accum_cam_offset_y = 110.0f;
-    if (accum_cam_offset_y < -110.0f) accum_cam_offset_y = -110.0f;
-}
+//     if (accum_cam_offset_x > 110.0f)  accum_cam_offset_x = 110.0f;
+//     if (accum_cam_offset_x < -110.0f) accum_cam_offset_x = -110.0f;
+//     if (accum_cam_offset_y > 110.0f)  accum_cam_offset_y = 110.0f;
+//     if (accum_cam_offset_y < -110.0f) accum_cam_offset_y = -110.0f;
+// }
 
 
 /**
@@ -81,16 +81,18 @@ void gimbalSettingCamOffset(float x, float y) {
     float imu_r, imu_p, imu_y;
     gyroServiceGetLatestAngles(&imu_r, &imu_p, &imu_y);
 
-    float cam_pid_x = 0.0f, cam_pid_y = 0.0f;
-    cameraServiceGetPIDOffset(&cam_pid_x, &cam_pid_y);
+    // float cam_pid_x = 0.0f, cam_pid_y = 0.0f;
+    // cameraServiceGetPIDOffset(&cam_pid_x, &cam_pid_y);
 
-
+    // 🌟 1. 누적된 최종 절대 각도만 당겨옴 (Pull)
+    float cam_absolute_x = 0.0f, cam_absolute_y = 0.0f;
+    cameraServiceGetPIDOffset(&cam_absolute_x, &cam_absolute_y);
     
-    if (is_cam_control_enable) {
-        // 카메라 서비스에서 가져온 PID 출력값을 누적
-        accum_cam_offset_x += (cam_pid_x * -0.1f);
-        accum_cam_offset_y += (cam_pid_y * 0.1f);
-    }
+    // if (is_cam_control_enable) {
+    //     // 카메라 서비스에서 가져온 PID 출력값을 누적
+    //     accum_cam_offset_x += (cam_pid_x * -0.1f);
+    //     accum_cam_offset_y += (cam_pid_y * 0.1f);
+    // }
 
 
     // 1. servo.c에서 정의된 초기값(Init)을 가져옵니다.
@@ -116,11 +118,16 @@ void gimbalSettingCamOffset(float x, float y) {
     float final_yaw   = init_y + 0.0f; //(imu_y * 1.0f)
 
     // 3. 카메라 제어가 켜져있을 때만 누적값 합산
-    if (is_cam_control_enable) {
-        final_pitch += accum_cam_offset_y;
-        final_yaw   += accum_cam_offset_x;
-    }
+    // if (is_cam_control_enable) {
+    //     final_pitch += accum_cam_offset_y;
+    //     final_yaw   += accum_cam_offset_x;
+    // }
 
+    // 🌟 4. 카메라 오프셋 적용 (+ 연산이므로 100Hz로 돌아도 누적되지 않음!)
+    if (is_cam_control_enable) {
+        final_pitch = final_pitch + cam_absolute_y;
+        final_yaw   = final_yaw + cam_absolute_x;
+    }
 
     // 4. 서보 모터 하드웨어 보호를 위한 리미트 (Clamping)
    // Roll 축 (CH 0) 리미트 체크
@@ -151,10 +158,17 @@ void gimbalSettingCamOffset(float x, float y) {
         //           init_p, imu_pitch, cam_offset_y, final_pitch, diff_p,
         //           init_y, imu_yaw, cam_offset_x, final_yaw, diff_y);
 
+        // cliPrintf("R(%.1f):%.1f->%.1f(%.2f) | P(%.1f):%.1f+%.1f->%.1f(%.2f) | Y(%.1f):%.1f+%.1f->%.1f(%.2f)\r\n",
+        //           init_r, imu_r, final_roll, diff_r,
+        //           init_p, imu_p, accum_cam_offset_y, final_pitch, diff_p,
+        //           init_y, imu_y, accum_cam_offset_x, final_yaw, diff_y);
+        
         cliPrintf("R(%.1f):%.1f->%.1f(%.2f) | P(%.1f):%.1f+%.1f->%.1f(%.2f) | Y(%.1f):%.1f+%.1f->%.1f(%.2f)\r\n",
                   init_r, imu_r, final_roll, diff_r,
-                  init_p, imu_p, accum_cam_offset_y, final_pitch, diff_p,
-                  init_y, imu_y, accum_cam_offset_x, final_yaw, diff_y);
+                  init_p, imu_p, cam_absolute_y, final_pitch, diff_p,
+                  init_y, imu_y, cam_absolute_x, final_yaw, diff_y);
+        
+        
         // 현재 값을 다음 비교를 위해 저장
         last_final_roll = final_roll;
         last_final_pitch = final_pitch;
@@ -176,16 +190,24 @@ void gimbalSettingCamOffset(float x, float y) {
 
 
 
-/**
- * @brief 짐벌을 초기 정면 위치로 복귀
- */
-void gimbalReturnHome(void) {
-    // cam_offset_x = 0.0f;
-    // cam_offset_y = 0.0f;
-    accum_cam_offset_x = 0.0f; // 누적값 초기화
-    accum_cam_offset_y = 0.0f;
+// /**
+//  * @brief 짐벌을 초기 정면 위치로 복귀
+//  */
+// void gimbalReturnHome(void) {
+//     cam_offset_x = 0.0f;
+//     cam_offset_y = 0.0f;
+//     accum_cam_offset_x = 0.0f; // 누적값 초기화
+//     accum_cam_offset_y = 0.0f;
 
-    // servo.c의 설정값을 그대로 가져와서 복귀
+//     servo.c의 설정값을 그대로 가져와서 복귀
+//     servoSetTarget(0, servoGetInitAngle(0), 0.1f);
+//     servoSetTarget(1, servoGetInitAngle(1), 0.1f);
+//     servoSetTarget(2, servoGetInitAngle(2), 0.1f);
+// }
+void gimbalReturnHome(void) {
+    // 🌟 카메라 서비스의 누적값을 리셋 명령
+    cameraServiceResetOffset();
+
     servoSetTarget(0, servoGetInitAngle(0), 0.1f);
     servoSetTarget(1, servoGetInitAngle(1), 0.1f);
     servoSetTarget(2, servoGetInitAngle(2), 0.1f);
