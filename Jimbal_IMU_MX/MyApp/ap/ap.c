@@ -448,14 +448,18 @@ void gimbalSystemTask(void *argument)
     cameraServiceInit();   // 카메라 PID 변수(sum, prev) 초기화
 
     while (1) {
-        // 카메라 업데이트 (파싱 + PID 계산 + 보고)
-        cameraDataParsing();
-        cameraServicePIDUpdate();
 
+      
+        // 카메라 업데이트 (파싱 + PID 계산 + 보고)
+        bool has_new_cam_data = cameraDataParsing(); // 이제 에러 안 나고 true/false를 받음!
+
+        if (has_new_cam_data) {
+            cameraServicePIDUpdate(); // 새 데이터가 왔을 때만 PID 계산!
+        }
         // 통합 제어 (데이터 합산 및 서보 구동)
         gimbalExecuteCombinedControl();
 
-        osDelay(100); // 100Hz
+        osDelay(10); // 100Hz
     }
 }
 
@@ -521,7 +525,7 @@ void gyroSystemTask(void *argument) {
     if (gyroServiceIsOk() && GyroReadySemHandle != NULL) { 
         gyroServiceUpdate();
     } else {
-        osDelay(100);
+        osDelay(10);
     }
   }
 }
@@ -537,7 +541,7 @@ void magSystemTask(void *argument) {
                 gyroServiceSetMagData(&magData);
             }
         }
-        osDelay(20); // 지자기 센서는 자이로보다 느리게 갱신해도 무방합니다
+        osDelay(10); // 지자기 센서는 자이로보다 느리게 갱신해도 무방합니다
     }
 }
 

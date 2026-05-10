@@ -27,14 +27,16 @@ void cameraServiceInit(void);
  */
 camera_data_t* cameraGetLatestData(void);
 
-/**
- * @brief UART로부터 9바이트 패킷을 수신하고 즉시 PID 기반 짐벌 제어를 수행
- */
-void cameraDataParsing(void);
-
+// [수정] 새 패킷 수신 여부를 반환하도록 bool 형으로 변경
+bool cameraDataParsing(void);
 
 void cameraServicePIDUpdate(void);
 
-// [수정: 제어기가 데이터를 가져갈 수 있도록 Getter 추가]
+// [수정] 누적된 '절대 오프셋'을 당겨가는 Getter
 void cameraServiceGetPIDOffset(float *out_x, float *out_y);
+
+// [추가] 짐벌 복귀 시 누적값을 0으로 리셋하는 함수
+void cameraServiceResetOffset(void);
+
+
 #endif /* __CAMERA_SERVICE_H__ */

@@ -7,6 +7,9 @@ static camera_data_t cam_data;
 static float filtered_pid_x = 0.0f;
 static float filtered_pid_y = 0.0f;
 
+// 카메라 서비스 내부에서 직접 누적할 절대 오프셋 변수
+static float absolute_cam_offset_x = 0.0f;
+static float absolute_cam_offset_y = 0.0f;
 
 // [PID 상태 변수] 이전 오차와 누적 오차를 기억하기 위함
 static float error_x_sum = 0.0f, error_x_prev = 0.0f;
@@ -21,6 +24,9 @@ void cameraServiceInit(void) {
 
     error_x_sum = error_x_prev = 0.0f;
     error_y_sum = error_y_prev = 0.0f;
+
+    absolute_cam_offset_x = 0.0f;
+    absolute_cam_offset_y = 0.0f;
 }
 
 camera_data_t* cameraGetLatestData(void) {
@@ -29,10 +35,12 @@ camera_data_t* cameraGetLatestData(void) {
 
 
 
-void cameraDataParsing(void) {
+bool cameraDataParsing(void) {
     uint8_t data;
     static uint8_t buf[8]; // 9바이트 패킷 버퍼[cite: 5]
     static uint8_t idx = 0;
+    
+    bool new_data_received = false;
 
     // UART로부터 데이터 수신 (Board A -> Board B)
     while(uartAvailable(1) > 0) {
@@ -66,11 +74,17 @@ void cameraDataParsing(void) {
                 }
                 // 파싱 완료 즉시 짐벌 제어 수행
                 // cameraServicePIDUpdate(); 
+
+
+                // 패킷이 완벽하게 파싱되었을 때만 true로 바꿈!
+                new_data_received = true;
                 
             }
             idx = 0; // 다음 패킷 준비
         }
     }
+    // 루프를 다 돌고 나서 결과를 반환
+    return new_data_received;
 }
 
 
@@ -137,7 +151,7 @@ void cameraServicePIDUpdate(void) {
     // float Ki = 0.005f;
     // float Kd = 0.02f;
     float Kp = 0.4f;  // 기존 0.25에서 대폭 상향
-    float Ki = 0.03f; // 누적 오차를 더 빨리 반영 (0.015 -> 0.03)
+    float Ki = 0.0f; // 누적 오차를 더 빨리 반영 (0.015 -> 0.03)
     float Kd = 0.06f;  // 움직일 때 제동을 걸어 오버슈트 방지
 
     if (cam_data.area > 5000) {      
@@ -182,8 +196,14 @@ void cameraServicePIDUpdate(void) {
     // 🌊 [핵심 추가] 6. 저역 통과 필터 (LPF) 적용
     // 계산된 PID 값이 급격하게 튀는 것을 방지 (0.1이 반응성, 숫자가 작을수록 부드러움)
     // ---------------------------------------------------------
-    filtered_pid_x =target_pid_x; // (filtered_pid_x * 0.2f) + (target_pid_x * 0.8f);
-    filtered_pid_y =target_pid_y; // (filtered_pid_y * 0.2f) + (target_pid_y * 0.8f);
+    filtered_pid_x = (filtered_pid_x * 0.2f) + (target_pid_x * 0.8f); //target_pid_x; // (filtered_pid_x * 0.2f) + (target_pid_x * 0.8f);
+    filtered_pid_y = (filtered_pid_y * 0.2f) + (target_pid_y * 0.8f);//target_pid_y; // (filtered_pid_y * 0.2f) + (target_pid_y * 0.8f);
+
+
+    // 🌟 [핵심] 카메라 주기(30Hz)에 맞춰 1번만 누적됩니다.
+    absolute_cam_offset_x += (filtered_pid_x * -0.1f);
+    absolute_cam_offset_y += (filtered_pid_y * 0.1f);
+
 
     // ---------------------------------------------------------
     // 🛠 [디버깅 로그 추가] 0.1초마다 현재 상태 출력
@@ -196,7 +216,17 @@ void cameraServicePIDUpdate(void) {
 }
 
 // [수정: Pull 방식용 Getter 함수 구현]
+// void cameraServiceGetPIDOffset(float *out_x, float *out_y) {
+//     if (out_x) *out_x = filtered_pid_x;
+//     if (out_y) *out_y = filtered_pid_y;
+// }
 void cameraServiceGetPIDOffset(float *out_x, float *out_y) {
-    if (out_x) *out_x = filtered_pid_x;
-    if (out_y) *out_y = filtered_pid_y;
+    if (out_x) *out_x = absolute_cam_offset_x;
+    if (out_y) *out_y = absolute_cam_offset_y;
+}
+
+
+void cameraServiceResetOffset(void) {
+    absolute_cam_offset_x = 0.0f;
+    absolute_cam_offset_y = 0.0f;
 }
