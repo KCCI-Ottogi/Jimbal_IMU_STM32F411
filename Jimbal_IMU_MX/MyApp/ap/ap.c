@@ -148,13 +148,25 @@ void cliImu(uint8_t argc, char **argv) {
           cliPrintf("ERROR: Sensor Init Failed. Check Wires.\r\n");
           return;
       }
+
+      // 🌟 2. 센서 안정화 대기 (DLPF 및 상보필터가 자리를 잡을 시간)
+      cliPrintf("Waiting for IMU stabilization...\r\n");
+      osDelay(1000); // 1초 정도 대기하면 폭주 값이 사라집니다.
+    
+    
+      gyroServiceSyncCurrentOrigin();
       gyroServiceSetPeriod(period);
+
+      
       cliPrintf("IMU Report : ON (%d ms)\r\n", period);
 
     } else if (strcmp(argv[1], "off") == 0) {
       gyroServiceSetPeriod(0);
       cliPrintf("IMU Report : OFF\r\n");
     }
+  } else {
+      // 💡 가이드 메시지 추가 (정리 포인트)
+      cliPrintf("Usage: imu [on|off] [period]\r\n");
   }
 }
 
@@ -420,8 +432,10 @@ void cliGimbal(uint8_t argc, char **argv) {
     else if (strcmp(argv[1], "cam") == 0) { // == 0 추가
         if (argc >= 3) { // argv[2]를 쓰려면 argc가 최소 3이어야 함
             if (strcmp(argv[2], "on") == 0) { // == 0 추가
+                cameraServiceResetZeroPoint();  
+                gyroServiceSyncCurrentOrigin();
                 gimbalSetCamControlEnable(true);
-                gimbalReturnHome(); 
+                // gimbalReturnHome(); 
                 cliPrintf("Gimbal Camera Control: ON\r\n");
             } 
             else if (strcmp(argv[2], "off") == 0) { // == 0 추가

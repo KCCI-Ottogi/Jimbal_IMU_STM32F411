@@ -36,7 +36,7 @@ void cameraServicePIDUpdate(void);
 void cameraServiceGetPIDOffset(float *out_x, float *out_y);
 
 // [추가] 짐벌 복귀 시 누적값을 0으로 리셋하는 함수
-void cameraServiceResetOffset(void);
+void cameraServiceResetZeroPoint(void);
 
 
 #endif /* __CAMERA_SERVICE_H__ */

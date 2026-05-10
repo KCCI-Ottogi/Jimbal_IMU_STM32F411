@@ -206,7 +206,7 @@ bool gimbalGetCamControlEnable(void) {
 // }
 void gimbalReturnHome(void) {
     // 🌟 카메라 서비스의 누적값을 리셋 명령
-    cameraServiceResetOffset();
+    cameraServiceResetZeroPoint();
 
     servoSetTarget(0, servoGetInitAngle(0), 0.1f);
     servoSetTarget(1, servoGetInitAngle(1), 0.1f);
