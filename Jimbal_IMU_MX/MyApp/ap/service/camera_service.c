@@ -139,9 +139,14 @@ void cameraServicePIDUpdate(void) {
         error_x_sum = error_x_prev = 0.0f;
         error_y_sum = error_y_prev = 0.0f;
         
-        // 타겟이 없으면 보정치를 서서히 0으로 되돌림 (스르륵 복귀)
-        filtered_pid_x *= 0.9f; 
-        filtered_pid_y *= 0.9f;
+        // 🌟 타겟을 놓치면 누적된 오프셋을 서서히 0(정면)으로 복귀시킵니다.
+        // 0.95f 숫자가 클수록 천천히, 작을수록 빠르게 복귀합니다.
+        // absolute_cam_offset_x *= 0.95f; 
+        // absolute_cam_offset_y *= 0.95f;
+
+
+        filtered_pid_x *= 0; 
+        filtered_pid_y *= 0;
         // gimbalSettingCamOffset(filtered_pid_x, filtered_pid_y);
         return;
     }
@@ -196,8 +201,8 @@ void cameraServicePIDUpdate(void) {
     // 🌊 [핵심 추가] 6. 저역 통과 필터 (LPF) 적용
     // 계산된 PID 값이 급격하게 튀는 것을 방지 (0.1이 반응성, 숫자가 작을수록 부드러움)
     // ---------------------------------------------------------
-    filtered_pid_x = (filtered_pid_x * 0.2f) + (target_pid_x * 0.8f); //target_pid_x; // (filtered_pid_x * 0.2f) + (target_pid_x * 0.8f);
-    filtered_pid_y = (filtered_pid_y * 0.2f) + (target_pid_y * 0.8f);//target_pid_y; // (filtered_pid_y * 0.2f) + (target_pid_y * 0.8f);
+    filtered_pid_x = (filtered_pid_x * 0.4f) + (target_pid_x * 0.6f); //target_pid_x; // (filtered_pid_x * 0.2f) + (target_pid_x * 0.8f);
+    filtered_pid_y = (filtered_pid_y * 0.4f) + (target_pid_y * 0.6f);//target_pid_y; // (filtered_pid_y * 0.2f) + (target_pid_y * 0.8f);
 
 
     // 🌟 [핵심] 카메라 주기(30Hz)에 맞춰 1번만 누적됩니다.
@@ -229,4 +234,12 @@ void cameraServiceGetPIDOffset(float *out_x, float *out_y) {
 void cameraServiceResetOffset(void) {
     absolute_cam_offset_x = 0.0f;
     absolute_cam_offset_y = 0.0f;
+
+    // 2. 🌟 PID 중간 변수 및 필터 잔상 제거 (치우침 방지의 핵심)
+    filtered_pid_x = 0.0f;
+    filtered_pid_y = 0.0f;
+    error_x_sum = 0.0f;
+    error_y_sum = 0.0f;
+    error_x_prev = 0.0f;
+    error_y_prev = 0.0f;
 }
