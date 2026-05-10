@@ -162,9 +162,13 @@ void gimbalSettingCamOffset(float x, float y) {
     }
 
     // 5. 최종 목표 각도를 서보 드라이버에 전달
-    servoSetTarget(0, final_roll,  0.3f); // Roll 축
-    servoSetTarget(1, final_pitch, 0.3f); // Pitch 축
-    servoSetTarget(2, final_yaw,   0.3f); // Yaw 축
+    //servoSetTarget(0, final_roll,  0.3f); // Roll 축
+    //servoSetTarget(1, final_pitch, 0.3f); // Pitch 축
+    //servoSetTarget(2, final_yaw,   0.3f); // Yaw 축
+    
+    servoSetTarget(0, final_roll,  1.0f); // Roll 축
+    servoSetTarget(1, final_pitch, 1.0f); // Pitch 축
+    servoSetTarget(2, final_yaw,   1.0f); // Yaw 축
     
     // 6. 실제 보간 이동 실행
     servoSmoothUpdate();
