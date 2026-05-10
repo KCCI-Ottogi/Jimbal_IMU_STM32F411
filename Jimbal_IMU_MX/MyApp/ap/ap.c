@@ -421,6 +421,7 @@ void cliGimbal(uint8_t argc, char **argv) {
         if (argc >= 3) { // argv[2]를 쓰려면 argc가 최소 3이어야 함
             if (strcmp(argv[2], "on") == 0) { // == 0 추가
                 gimbalSetCamControlEnable(true);
+                gimbalReturnHome(); 
                 cliPrintf("Gimbal Camera Control: ON\r\n");
             } 
             else if (strcmp(argv[2], "off") == 0) { // == 0 추가
@@ -449,7 +450,7 @@ void gimbalSystemTask(void *argument)
 
     while (1) {
 
-      
+
         // 카메라 업데이트 (파싱 + PID 계산 + 보고)
         bool has_new_cam_data = cameraDataParsing(); // 이제 에러 안 나고 true/false를 받음!
 
