@@ -7,6 +7,9 @@
 // #include "hw.h"
 
 #include "gimbal_control.h"
+#include "esp8266.h"
+#include "cmsis_os2.h"
+#include "service/camera_service.h"
 
 void apInit(void);
 void apMain(void);
@@ -22,4 +25,5 @@ void startMonitorStartTask(void *argument);
 void gimbalSystemTask(void *argument);
 
 void showStack(void);
+void cliOTA(uint8_t argc, char **argv);
 #endif //__AP_AP_H_

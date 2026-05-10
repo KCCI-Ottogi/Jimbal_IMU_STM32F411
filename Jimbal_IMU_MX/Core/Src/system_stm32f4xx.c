@@ -45,6 +45,8 @@
   */
 
 
+#define VECT_TAB_OFFSET  0x00008000U /* Sector 2 시작 오프셋 */
+
 #include "stm32f4xx.h"
 
 #if !defined  (HSE_VALUE) 
